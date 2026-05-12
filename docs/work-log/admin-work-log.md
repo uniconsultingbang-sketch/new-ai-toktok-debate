@@ -25,9 +25,11 @@
 - `npx.cmd tsc --noEmit` 성공.
 - 로컬 `http://127.0.0.1:3043/login?next=%2Fadmin`에서 `Admin Console`, `관리자 계정으로 로그인하세요.`, 저작권 문구 표시 확인.
 - 로컬 `http://127.0.0.1:3043/login`에서는 기존 사용자용 로그인 화면이 유지되는 것 확인.
+- GitHub `main`에 커밋 `4c1b4db` 푸시 완료.
+- Vercel `https://new-ai-toktok-debate.vercel.app/login?next=%2Fadmin`에서 새 어드민 로그인 화면 렌더링 확인.
 
 ### 남은 이슈
-- Vercel 배포 후 `https://new-ai-toktok-debate.vercel.app/login?next=%2Fadmin`에서 최종 화면 확인이 필요합니다.
+- 실제 토론 기록 1건 이상이 있는 상태의 상태 변경/삭제는 운영 전 테스트 전용 기록으로 확인합니다.
 
 ---
 
