@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 3-Mind Council Preview</title>
+    <style>
+      :root {
+        --ink: #0b1f44;
+        --line: #d8e2f0;
+        --page: #f6f8fb;
+        --bull: #16803c;
+        --bear: #d64032;
+        --judge: #1d5fd1;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family:
+          Inter, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Arial,
+          sans-serif;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: white;
+      }
+
+      .wrap {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .hero {
+        padding: 34px 0 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--judge);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 680px;
+        margin: 14px 0 0;
+        color: #516179;
+        font-size: 17px;
+        line-height: 1.7;
+      }
+
+      main {
+        padding: 28px 0 46px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 22px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        padding: 24px;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      label,
+      .label {
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 13px 14px;
+        color: var(--ink);
+        font: inherit;
+        outline: none;
+      }
+
+      textarea {
+        min-height: 108px;
+        resize: vertical;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 15px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: white;
+        padding: 9px 12px;
+        color: #526078;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .chip.active {
+        border-color: var(--judge);
+        background: #eef5ff;
+        color: var(--judge);
+      }
+
+      .primary {
+        width: 100%;
+        margin-top: 24px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--ink);
+        color: white;
+        padding: 14px 16px;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .section {
+        margin-top: 22px;
+      }
+
+      .section h2 {
+        margin: 0 0 16px;
+        font-size: 22px;
+      }
+
+      .report-head {
+        display: grid;
+        gap: 8px;
+      }
+
+      .recommend {
+        margin: 0;
+        font-size: 34px;
+        font-weight: 900;
+      }
+
+      .three {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .mini {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 17px;
+      }
+
+      .mini h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 19px;
+        color: #536276;
+        line-height: 1.7;
+      }
+
+      .round {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        margin-top: 14px;
+      }
+
+      .round-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        font-weight: 900;
+      }
+
+      .num {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--ink);
+        color: white;
+        font-size: 14px;
+      }
+
+      .persona {
+        border-radius: 8px;
+        padding: 15px;
+        line-height: 1.65;
+      }
+
+      .persona b {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .bull {
+        border: 1px solid #bde5c9;
+        background: #f0fbf3;
+      }
+
+      .bear {
+        border: 1px solid #f3c4bd;
+        background: #fff3f1;
+      }
+
+      .judge {
+        border: 1px solid #bfd5ff;
+        background: #f1f6ff;
+      }
+
+      @media (max-width: 880px) {
+        .grid,
+        .three {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap hero">
+        <p class="eyebrow">Decision Support MVP</p>
+        <h1>AI 3-Mind Council</h1>
+        <p class="lead">
+          중요한 의사결정 안건을 입력하면 Bull, Bear, Judge 세 관점이
+          토론하고 최종 권고 리포트를 생성합니다.
+        </p>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="grid">
+        <section class="panel">
+          <div class="field">
+            <label>안건 제목</label>
+            <input value="일본 B2B SaaS 시장 진출 검토" />
+          </div>
+          <div class="field">
+            <label>결정해야 할 질문</label>
+            <input value="지금 일본 시장 진출을 진행해야 하는가?" />
+          </div>
+          <div class="field">
+            <label>배경 설명</label>
+            <textarea>국내 제품은 초기 PMF를 확인했고, 일본 파트너 후보가 접촉해온 상황입니다. 다만 현지 영업 리소스와 초기 비용 부담이 있습니다.</textarea>
+          </div>
+          <div class="field">
+            <label>현재 선택지</label>
+            <textarea>즉시 진출 / 6개월 후 재검토 / 파트너십으로 소규모 테스트</textarea>
+          </div>
+          <div class="field">
+            <label>우려되는 리스크</label>
+            <textarea>현지 영업 리소스 부족, 초기 비용 부담, 일본 시장 PMF 불확실성</textarea>
+          </div>
+        </section>
+
+        <aside class="panel">
+          <div class="label">집중 분석 영역</div>
+          <div class="chips">
+            <span class="chip">재무</span>
+            <span class="chip active">시장</span>
+            <span class="chip active">운영</span>
+            <span class="chip">시간</span>
+            <span class="chip">조직</span>
+            <span class="chip">법무/계약</span>
+            <span class="chip">기술</span>
+            <span class="chip">고객</span>
+          </div>
+          <button class="primary">토론 시작</button>
+        </aside>
+      </div>
+
+      <section class="panel section">
+        <div class="report-head">
+          <p class="eyebrow">최종 권고</p>
+          <p class="recommend">조건부 진행</p>
+          <p class="lead">
+            전면 추진보다는 제한된 파일럿으로 핵심 가정을 검증한 뒤 확장
+            여부를 결정하는 것을 권장합니다.
+          </p>
+        </div>
+        <div class="three" style="margin-top: 22px">
+          <div class="mini">
+            <h3>핵심 근거</h3>
+            <ul>
+              <li>기회 가능성은 있으나 검증이 필요합니다.</li>
+              <li>파일럿 방식은 리스크와 비용을 통제합니다.</li>
+              <li>다음 의사결정 게이트를 만들 수 있습니다.</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h3>주요 리스크</h3>
+            <ul>
+              <li>시장 수요가 예상보다 낮을 수 있습니다.</li>
+              <li>운영 리소스 부담이 커질 수 있습니다.</li>
+              <li>성과 기준이 모호하면 비용이 누적됩니다.</li>
+            </ul>
+          </div>
+          <div class="mini">
+            <h3>실행 조건</h3>
+            <ul>
+              <li>파일럿 범위와 예산 한도를 정합니다.</li>
+              <li>성공 기준과 중단 기준을 합의합니다.</li>
+              <li>담당자와 검토 일정을 지정합니다.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <h2>4단계 토론 흐름</h2>
+        <article class="round">
+          <div class="round-title"><span class="num">1</span>첫 인상</div>
+          <div class="three">
+            <div class="persona bull">
+              <b>Bull</b> 일본 시장은 검증할 가치가 있습니다. 파트너 후보가
+              이미 있다는 점은 초기 진입 비용을 낮출 수 있습니다.
+            </div>
+            <div class="persona bear">
+              <b>Bear</b> 현지 영업과 고객지원 리소스가 없다면 초기 관심이
+              실제 매출로 이어지지 않을 수 있습니다.
+            </div>
+            <div class="persona judge">
+              <b>Judge</b> 지금은 전면 진출보다 작은 범위의 검증 설계가
+              필요합니다.
+            </div>
+          </div>
+        </article>
+        <article class="round">
+          <div class="round-title"><span class="num">2</span>교차 반박</div>
+          <div class="three">
+            <div class="persona bull">
+              <b>Bull</b> 리스크가 있다는 이유만으로 보류하기보다 파일럿으로
+              시장 학습을 시작할 수 있습니다.
+            </div>
+            <div class="persona bear">
+              <b>Bear</b> 파일럿도 성공 기준이 없으면 비용만 발생합니다. 중단
+              기준을 먼저 정해야 합니다.
+            </div>
+            <div class="persona judge">
+              <b>Judge</b> 조건부 파일럿이 가장 현실적인 선택지입니다.
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
