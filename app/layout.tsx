@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "new AI 톡톡 토론",
-  description: "낙관, 회의, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 로컬 앱",
+  title: "3관점 논리 토론",
+  description: "낙관, 비관, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 서비스",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -37,4 +37,3 @@ export default function RootLayout({
     </html>
   );
 }
-

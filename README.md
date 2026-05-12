@@ -58,15 +58,32 @@ Copy `.env.example` to `.env.local` and fill in the values.
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GOOGLE_AI_API_KEY=
+APP_LOGIN_USERS=
+AUTH_SECRET=
 OPENAI_MODEL=
 ANTHROPIC_MODEL=
 GEMINI_MODEL=
 NEXT_PUBLIC_APP_URL=
 ```
+
+## Login Policy
+
+This app uses a fixed internal login for demos and small tests.
+
+- No public signup.
+- Only accounts listed in `APP_LOGIN_USERS` can log in.
+- Use this format for three users:
+
+```text
+APP_LOGIN_USERS=user1:password1:Name One,user2:password2:Name Two,user3:password3:Name Three
+```
+
+- Set `AUTH_SECRET` to a long random value in Vercel.
+- Login sessions last 7 days.
+- Changing a password means editing `APP_LOGIN_USERS` in Vercel and redeploying.
 
 ## Supabase Setup
 
