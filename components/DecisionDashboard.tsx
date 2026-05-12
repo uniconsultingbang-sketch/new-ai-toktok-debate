@@ -16,9 +16,11 @@ import {
   TopicType,
   createDecisionId,
   deleteDecision,
+  deleteDecisionAsync,
   formatDecisionDate,
   loadDecisions,
-  saveDecision,
+  loadDecisionsAsync,
+  saveDecisionAsync,
 } from "@/lib/decision-storage";
 
 const statusText: Record<DecisionRecord["status"], string> = {
@@ -45,12 +47,23 @@ export function DecisionDashboard() {
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     setDecisions(loadDecisions());
+    void loadDecisionsAsync().then((items) => {
+      if (isMounted) {
+        setDecisions(items);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const recentDecisions = useMemo(() => decisions.slice(0, showAll ? 20 : 5), [decisions, showAll]);
 
-  function submitDecision(event: FormEvent<HTMLFormElement>) {
+  async function submitDecision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (isStarting) {
@@ -89,7 +102,7 @@ export function DecisionDashboard() {
     };
 
     try {
-      saveDecision(decision);
+      await saveDecisionAsync(decision);
       const target = `/decisions/${decision.id}`;
       window.location.assign(target);
     } catch {
@@ -104,6 +117,7 @@ export function DecisionDashboard() {
     }
 
     deleteDecision(id);
+    void deleteDecisionAsync(id);
     setDecisions(loadDecisions());
   }
 

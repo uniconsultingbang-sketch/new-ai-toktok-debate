@@ -22,7 +22,8 @@ import {
   SpeakerId,
   TopicType,
   getDecision,
-  saveDecision,
+  getDecisionAsync,
+  saveDecisionAsync,
 } from "@/lib/decision-storage";
 
 type IncomingEvent =
@@ -108,20 +109,44 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
 
   useEffect(() => {
     window.history.scrollRestoration = "manual";
+    let isMounted = true;
     const saved = getDecision(decisionId);
 
-    if (!saved) {
-      setNotFound(true);
-      return;
+    function showDecision(nextDecision: DecisionRecord) {
+      if (!isMounted) {
+        return;
+      }
+
+      setNotFound(false);
+      setDecision(nextDecision);
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      window.setTimeout(() => window.scrollTo({ top: 0, behavior: "auto" }), 80);
+
+      if (nextDecision.status === "running" && !nextDecision.finalReport) {
+        startStream(nextDecision, nextDecision.events.length > 0);
+      }
     }
 
-    setDecision(saved);
-    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "auto" }), 80);
+    if (saved) {
+      showDecision(saved);
+    } else {
+      void getDecisionAsync(decisionId).then((remoteDecision) => {
+        if (!isMounted) {
+          return;
+        }
 
-    if (saved.status === "running" && !saved.finalReport) {
-      startStream(saved, saved.events.length > 0);
+        if (remoteDecision) {
+          showDecision(remoteDecision);
+          return;
+        }
+
+        setNotFound(true);
+      });
     }
+
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decisionId]);
 
@@ -180,7 +205,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
     };
 
     setDecision(initial);
-    saveDecision(initial);
+    void saveDecisionAsync(initial);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -340,7 +365,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       }
 
       const next = updater(current);
-      saveDecision(next);
+      void saveDecisionAsync(next);
       decisionRef.current = next;
       return next;
     });

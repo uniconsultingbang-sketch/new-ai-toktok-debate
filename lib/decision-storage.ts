@@ -1,5 +1,7 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
 export type CouncilMode = "role_based";
 export type DiscussionDepth = "deep";
 export type BanterLevel = "off";
@@ -117,8 +119,56 @@ export function loadDecisions(): DecisionRecord[] {
   return legacy;
 }
 
+export async function loadDecisionsAsync(): Promise<DecisionRecord[]> {
+  const localDecisions = loadDecisions();
+
+  if (!supabase) {
+    return localDecisions;
+  }
+
+  const { data, error } = await supabase
+    .from("decision_records")
+    .select("payload")
+    .order("updated_at", { ascending: false });
+
+  if (error || !data) {
+    return localDecisions;
+  }
+
+  const remoteDecisions = data
+    .map((row) => row.payload as DecisionRecord | null)
+    .filter((value): value is DecisionRecord => Boolean(value))
+    .map(normalizeDecision);
+
+  const merged = mergeDecisions(remoteDecisions, localDecisions);
+  writeStorage(merged);
+  return merged;
+}
+
 export function getDecision(id: string) {
   return loadDecisions().find((decision) => decision.id === id) ?? null;
+}
+
+export async function getDecisionAsync(id: string) {
+  const localDecision = getDecision(id);
+
+  if (localDecision || !supabase) {
+    return localDecision;
+  }
+
+  const { data, error } = await supabase
+    .from("decision_records")
+    .select("payload")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data?.payload) {
+    return null;
+  }
+
+  const decision = normalizeDecision(data.payload as DecisionRecord);
+  saveDecision(decision);
+  return decision;
 }
 
 export function saveDecision(decision: DecisionRecord) {
@@ -136,6 +186,28 @@ export function saveDecision(decision: DecisionRecord) {
   writeStorage(next);
 }
 
+export async function saveDecisionAsync(decision: DecisionRecord) {
+  saveDecision(decision);
+
+  if (!supabase) {
+    return;
+  }
+
+  const normalized = normalizeDecision(decision);
+
+  await supabase.from("decision_records").upsert(
+    {
+      id: normalized.id,
+      title: normalized.title,
+      status: normalized.status,
+      created_at: normalized.createdAt,
+      updated_at: normalized.updatedAt,
+      payload: normalized,
+    },
+    { onConflict: "id" },
+  );
+}
+
 export function deleteDecision(id: string) {
   if (typeof window === "undefined") {
     return;
@@ -143,6 +215,16 @@ export function deleteDecision(id: string) {
 
   const next = loadDecisions().filter((decision) => decision.id !== id);
   writeStorage(next);
+}
+
+export async function deleteDecisionAsync(id: string) {
+  deleteDecision(id);
+
+  if (!supabase) {
+    return;
+  }
+
+  await supabase.from("decision_records").delete().eq("id", id);
 }
 
 export function formatDecisionDate(value: string) {
@@ -182,6 +264,22 @@ function writeStorage(decisions: DecisionRecord[]) {
   const value = JSON.stringify(decisions.map(normalizeDecision));
   window.localStorage.setItem(STORAGE_KEY, value);
   window.localStorage.setItem(LEGACY_STORAGE_KEY, value);
+}
+
+function mergeDecisions(primary: DecisionRecord[], secondary: DecisionRecord[]) {
+  const seen = new Set<string>();
+  const merged: DecisionRecord[] = [];
+
+  for (const decision of [...primary, ...secondary]) {
+    if (seen.has(decision.id)) {
+      continue;
+    }
+
+    seen.add(decision.id);
+    merged.push(normalizeDecision(decision));
+  }
+
+  return merged.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
 function normalizeDecision(value: DecisionRecord): DecisionRecord {

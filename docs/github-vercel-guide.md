@@ -5,7 +5,7 @@
 Recommended repository name:
 
 ```text
-ai-3-mind-council
+new-ai-toktok-debate
 ```
 
 Recommended settings:
@@ -75,9 +75,9 @@ docs/supabase-schema.sql
 
 Open the Vercel URL and test:
 
-1. Enter a decision title.
-2. Enter the decision question.
-3. Select focus areas.
-4. Start the debate.
-5. Confirm the final report page opens.
-6. Test PDF save.
+1. Enter one debate agenda within 200 characters.
+2. Start the 3-view debate.
+3. Confirm the page shows the original user text and the AI topic summary.
+4. Confirm the speakers are `사회자`, `Claude`, `GPT`, and `Gemini`.
+5. Confirm the final conclusion appears with a clear recommendation and evidence sources.
+6. Open the same debate URL in another browser to confirm Supabase record sharing works.

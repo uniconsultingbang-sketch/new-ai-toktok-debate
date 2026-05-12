@@ -43,6 +43,15 @@ create table if not exists public.final_reports (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.decision_records (
+  id uuid primary key,
+  title text not null,
+  status text not null default 'running',
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -61,6 +70,7 @@ execute function public.set_updated_at();
 alter table public.decisions enable row level security;
 alter table public.debate_rounds enable row level security;
 alter table public.final_reports enable row level security;
+alter table public.decision_records enable row level security;
 
 create policy "Demo read decisions"
 on public.decisions
@@ -98,6 +108,27 @@ on public.final_reports
 for insert
 with check (true);
 
+create policy "Demo read decision records"
+on public.decision_records
+for select
+using (true);
+
+create policy "Demo insert decision records"
+on public.decision_records
+for insert
+with check (true);
+
+create policy "Demo update decision records"
+on public.decision_records
+for update
+using (true)
+with check (true);
+
+create policy "Demo delete decision records"
+on public.decision_records
+for delete
+using (true);
+
 create index if not exists decisions_created_at_idx
 on public.decisions(created_at desc);
 
@@ -106,4 +137,7 @@ on public.debate_rounds(decision_id);
 
 create index if not exists final_reports_decision_id_idx
 on public.final_reports(decision_id);
+
+create index if not exists decision_records_updated_at_idx
+on public.decision_records(updated_at desc);
 
