@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, isAuthConfigured, verifyActiveSessionToken } from "@/lib/auth";
 
+const adminPathPrefix = "/admin";
+const adminUserId = process.env.ADMIN_USER_ID?.trim() || "demo03";
+
 const publicPrefixes = [
   "/_next",
   "/images",
@@ -14,6 +17,28 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (publicPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next();
+  }
+
+  if (pathname === adminPathPrefix || pathname.startsWith(`${adminPathPrefix}/`)) {
+    if (!isAuthConfigured()) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const session = await verifyActiveSessionToken(request.cookies.get(AUTH_COOKIE_NAME)?.value);
+
+    if (!session) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (session.id !== adminUserId) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
     return NextResponse.next();
   }
 

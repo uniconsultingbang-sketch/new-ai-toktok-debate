@@ -47,12 +47,31 @@ export function LoginForm() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <div className="login-icon">
-          <LockKeyhole className="size-7" />
+        <div className="login-brand-block">
+          <div className="login-brand-title">
+            <h1>AI Talk Talk</h1>
+            <span>Beta</span>
+          </div>
+          <p>AI와 함께 자유롭게 이야기해보세요.</p>
         </div>
-        <p className="prof-eyebrow">Private Test</p>
-        <h1>AI Talk Talk 로그인</h1>
-        <p className="login-copy">지정된 3명만 사용하는 테스트 공간입니다. 받은 아이디와 비밀번호로 들어가 주세요.</p>
+
+        <div className="login-bot-stage" aria-hidden="true">
+          <div className="mobile-bot mobile-bot-claude">
+            <span className="mobile-bot-bubble">♥</span>
+            <span className="mobile-bot-face" />
+            <strong>Claude</strong>
+          </div>
+          <div className="mobile-bot mobile-bot-gpt">
+            <span className="mobile-bot-bubble">•••</span>
+            <span className="mobile-bot-face" />
+            <strong>GPT</strong>
+          </div>
+          <div className="mobile-bot mobile-bot-gemini">
+            <span className="mobile-bot-bubble">✦</span>
+            <span className="mobile-bot-face" />
+            <strong>Gemini</strong>
+          </div>
+        </div>
 
         <form onSubmit={submitLogin} className="login-form">
           <label>
@@ -83,6 +102,16 @@ export function LoginForm() {
             {isLoading ? "확인 중..." : "로그인"}
           </button>
         </form>
+
+        <div className="login-beta-note">
+          <span>
+            <LockKeyhole className="size-5" />
+          </span>
+          <p>
+            <strong>AI Talk Talk Beta 서비스</strong>
+            지정된 3명만 사용하는 테스트 공간입니다.
+          </p>
+        </div>
       </section>
     </main>
   );

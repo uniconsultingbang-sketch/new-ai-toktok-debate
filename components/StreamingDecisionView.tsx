@@ -56,6 +56,7 @@ const speakerMeta: Record<
     icon: ReactNode;
     accent: string;
     panel: string;
+    avatarClass?: string;
   }
 > = {
   moderator: {
@@ -71,6 +72,7 @@ const speakerMeta: Record<
     icon: <UserRoundCheck className="size-5" />,
     accent: "#7A4A1D",
     panel: "prof-speaker-claude",
+    avatarClass: "prof-avatar-claude",
   },
   gpt: {
     title: "GPT",
@@ -78,6 +80,7 @@ const speakerMeta: Record<
     icon: <ShieldAlert className="size-5" />,
     accent: "#2B5B50",
     panel: "prof-speaker-gpt",
+    avatarClass: "prof-avatar-gpt",
   },
   gemini: {
     title: "Gemini",
@@ -85,6 +88,7 @@ const speakerMeta: Record<
     icon: <Scale className="size-5" />,
     accent: "#394E87",
     panel: "prof-speaker-gemini",
+    avatarClass: "prof-avatar-gemini",
   },
 };
 
@@ -585,7 +589,9 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
   return (
     <article className={`prof-turn-card ${meta.panel}`}>
       <div className="prof-speaker-head">
-        <span className="prof-speaker-icon" style={{ color: meta.accent }}>{meta.icon}</span>
+        <span className={`prof-speaker-icon ${meta.avatarClass ?? ""}`} style={{ color: meta.accent }}>
+          {meta.avatarClass ? <span className="prof-avatar-face" /> : meta.icon}
+        </span>
         <div>
           <h3>{meta.title}</h3>
         </div>

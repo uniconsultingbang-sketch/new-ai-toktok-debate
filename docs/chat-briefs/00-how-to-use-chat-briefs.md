@@ -19,6 +19,7 @@ Codex 채팅방끼리는 대화 내용을 자동으로 공유하지 않습니다
 
 ## 채팅방별 문서
 
+- PM 현황 관리: `docs/chat-briefs/05-pm-status-chat-brief.md`
 - 디자인: `docs/chat-briefs/01-design-chat-brief.md`
 - 어드민: `docs/chat-briefs/02-admin-chat-brief.md`
 - 로직/프론트: `docs/chat-briefs/03-logic-front-chat-brief.md`
@@ -30,4 +31,3 @@ Codex 채팅방끼리는 대화 내용을 자동으로 공유하지 않습니다
 - 다른 채팅방 작업을 자동으로 안다고 가정하지 않습니다.
 - 같은 파일을 여러 채팅방이 동시에 수정하지 않도록 주의합니다.
 - 최종 개발팀 전달 문서는 `docs/handoff`에 정리합니다.
-

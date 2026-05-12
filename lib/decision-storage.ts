@@ -74,6 +74,19 @@ export type DecisionRecord = {
   events: DebateEvent[];
   finalReport: FinalReport | null;
   error: string | null;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    estimated?: boolean;
+    modelCosts?: Array<{
+      provider: string;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      costUsd: number;
+    }>;
+  };
 };
 
 const STORAGE_KEY = "newAiToktokProfessorDebates";

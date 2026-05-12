@@ -35,6 +35,14 @@
 
 Codex 채팅방끼리는 대화 내용을 자동 공유하지 않습니다. 각 채팅방은 반드시 자기 역할 문서를 먼저 읽습니다.
 
+### AI Talk Talk_PM 현황 관리
+
+- 역할: 5개 채팅방 전체 현황 관리와 우선순위 조율
+- 먼저 읽을 문서: `docs/chat-briefs/05-pm-status-chat-brief.md`
+- 주 작업: 각 채팅방 진행상태 취합, 막힌 이슈 정리, 다음 액션/담당 채팅방 분리, 방실장님 보고용 현황판 작성
+- 건드리지 말 것: 프론트/디자인/어드민/로직 파일의 직접 구현 수정
+- 작업 로그: `docs/work-log/pm-work-log.md`
+
 ### AI Talk Talk_QA 테스트
 
 - 역할: 오류 테스트와 검수 전담
@@ -134,6 +142,7 @@ Codex 채팅방끼리는 대화 내용을 자동 공유하지 않습니다. 각 
 - 프론트 UIUX: `docs/work-log/design-work-log.md`
 - 어드민: `docs/work-log/admin-work-log.md`
 - 로직/프론트: `docs/work-log/front-work-log.md`
+- PM 현황 관리: `docs/work-log/pm-work-log.md`
 
 ## 10. 검증 규칙
 

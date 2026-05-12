@@ -28,9 +28,11 @@
 - 로컬 폴더명: `new-ai-toktok-debate`
 - 쿠키 이름: `new_ai_toktok_session`
 - localStorage 키: `newAiToktokProfessorDebates`
-- 기존 이미지 파일명: `ai-toktok-*`
+- 기존 이전 프로젝트 이미지 파일명: `ai-toktok-*`
 
 이 값들은 사용자에게 거의 보이지 않는 내부 식별자입니다. 바꾸려면 별도 마이그레이션 계획이 필요합니다.
+
+단, `ai-toktok-*` 이미지 파일은 이전 프로젝트 이미지로 확인되어 2026-05-12 디자인 작업에서 제거했습니다. 현재 앱 아이콘과 공유 이미지는 `ai-talk-*` 파일을 사용합니다.
 
 ## 개발팀 전달 기준
 

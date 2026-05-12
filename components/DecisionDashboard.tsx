@@ -203,11 +203,40 @@ export function DecisionDashboard() {
           )}
         </header>
 
+        <section className="simple-hero-section">
+          <p className="simple-hello">안녕하세요!</p>
+          <h1>
+            오늘은 어떤
+            <br />
+            주제로
+            <br />
+            이야기해볼까요?
+          </h1>
+
+          <div className="home-bot-stage" aria-hidden="true">
+            <div className="mobile-bot mobile-bot-claude">
+              <span className="mobile-bot-bubble">♥</span>
+              <span className="mobile-bot-face" />
+              <strong>Claude</strong>
+            </div>
+            <div className="mobile-bot mobile-bot-gpt">
+              <span className="mobile-bot-bubble">•••</span>
+              <span className="mobile-bot-face" />
+              <strong>GPT</strong>
+            </div>
+            <div className="mobile-bot mobile-bot-gemini">
+              <span className="mobile-bot-bubble">✦</span>
+              <span className="mobile-bot-face" />
+              <strong>Gemini</strong>
+            </div>
+          </div>
+        </section>
+
         <section className="simple-input-card">
           <div className="simple-input-head">
             <div>
               <p className="prof-eyebrow">New Debate</p>
-              <h1>무엇을 토론할까요?</h1>
+              <h1>토론 안건을 적어주세요</h1>
             </div>
             <Sparkles className="size-6" />
           </div>
@@ -226,7 +255,7 @@ export function DecisionDashboard() {
                   }
                 }}
                 maxLength={200}
-                placeholder="예: 신약 개발에 필요한 AI 인재는 어떤 사람이 좋을까?"
+                placeholder="메시지를 입력하세요..."
               />
               <small>{question.length}/200</small>
             </label>
@@ -235,7 +264,7 @@ export function DecisionDashboard() {
 
             <button type="submit" className="simple-start-button" disabled={isStarting}>
               <SendHorizontal className="size-5" />
-              {isStarting ? "토론방 여는 중..." : "토론 시작"}
+              <span className="simple-start-label">{isStarting ? "토론방 여는 중..." : "토론 시작"}</span>
             </button>
           </form>
         </section>
