@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "AI Talk Talk",
     short_name: "AI Talk",
-    description: "낙관, 회의, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 AI Talk Talk 앱",
+    description: "낙관, 비관, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 AI Talk Talk 앱",
     start_url: "/",
     scope: "/",
     display: "standalone",
