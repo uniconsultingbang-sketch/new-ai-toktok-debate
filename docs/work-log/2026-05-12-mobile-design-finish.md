@@ -35,5 +35,12 @@
 
 ## 배포
 
-- Vercel production 배포 확인 후 이 항목을 갱신합니다.
-
+- GitHub `main`에 `ff78253` 커밋을 push했습니다.
+- Vercel production 배포가 생성되었고 `READY` 상태를 확인했습니다.
+- 배포 ID: `dpl_xtfvQg149P9Nnr9RMshvu6gUeLJm`
+- Production URL: `https://new-ai-toktok-debate.vercel.app/`
+- 실제 주소에서 `/login` 200 응답과 `AI Talk Talk` metadata를 확인했습니다.
+- `/manifest.webmanifest`에서 `short_name: "AI Talk"`과 `theme_color: "#6A4CFF"`를 확인했습니다.
+- `/images/ai-talk-og.png`, `/images/ai-talk-icon-192.png`, `/images/ai-talk-icon-512.png`가 모두 200 응답하는 것을 확인했습니다.
+- 쿠키 없는 `/` 접근은 `/login?next=%2F`로 이동하는 것을 확인했습니다.
+- 운영 계정 중복 로그인 잠금에 영향을 주지 않기 위해 production 실제 로그인 클릭은 진행하지 않았습니다. 로그인 후 홈 화면 비율은 동일 build의 로컬 production 서버에서 검증했습니다.
