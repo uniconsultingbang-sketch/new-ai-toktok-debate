@@ -168,7 +168,7 @@ export function DecisionDashboard() {
                 }
               }}
               maxLength={200}
-              placeholder="예: 박카스 젊은사람들 다시 먹게하려면 어케해야하지 아저씨음료 느낌이 너무강한데"
+              placeholder="예: 새 서비스를 바로 도입할지 작게 검증할지 고민돼"
               className="prof-main-textarea"
             />
             <small>생각나는 대로 200자 안에 적어주세요. AI가 주제와 핵심 질문을 정리합니다. {question.length}/200</small>

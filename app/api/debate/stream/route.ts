@@ -114,6 +114,9 @@ const finalSectionLabels = {
   evidenceSources: "근거 자료",
 };
 
+const unstableAiMessage =
+  "토론을 정리하는 중 AI 응답이 불안정합니다. 입력하신 안건은 저장되어 있습니다. 잠시 후 다시 시도해 주세요.";
+
 export async function POST(request: Request) {
   let rawInput: DebateInput;
 
@@ -179,9 +182,14 @@ export async function POST(request: Request) {
             ? { message: fallback, status: "fallback" as const }
             : await generateTurn(plan.speaker, buildTurnPrompt(input, profile, plan, history), fallback);
 
-          const message = shouldUseFallback(result.message, plan, history)
-            ? fallback
-            : cleanTurnMessage(result.message);
+          const candidate = cleanTurnMessage(result.message);
+          const useFallback = shouldUseFallback(candidate, plan, history, input);
+
+          if (useFallback && !isSafeFallback(fallback, plan, input)) {
+            throw new Error(unstableAiMessage);
+          }
+
+          const message = useFallback ? fallback : candidate;
           const meta = speakerMeta[plan.speaker];
 
           emit({
@@ -216,9 +224,10 @@ export async function POST(request: Request) {
         });
         emit({ type: "done" });
       } catch (error) {
+        console.error("[debate-stream] stream failed", error);
         emit({
           type: "error",
-          message: error instanceof Error ? error.message : "AI 토론 중 오류가 발생했습니다.",
+          message: unstableAiMessage,
         });
       } finally {
         controller.close();
@@ -382,90 +391,19 @@ JSON 형식:
 
 function fallbackInterpretedAgenda(content: string, title: string, profile: TopicProfile): InterpretedAgenda {
   const normalized = content.trim().split(/\s+/).join(" ");
-
-  if (/(우산|비|날씨).*(가져|챙|들고|필요|갈까)|(?:가져|챙|들고|필요|갈까).*(우산|비|날씨)/.test(normalized)) {
-    return {
-      topic: "내일 우산을 가져갈지 판단",
-      coreQuestion: "비가 올 가능성과 젖었을 때의 불편이 우산을 들고 다니는 부담보다 클까?",
-      inferredOptions: ["우산 챙기기", "작은 우산이나 우비 준비", "날씨를 다시 확인하고 빈손으로 이동"],
-      inferredConcerns: ["비를 맞을 불편", "우산 휴대 부담", "이동 거리와 외부 일정"],
-      focusAreas: ["날씨 가능성", "이동 거리", "휴대 부담", "대안"],
-      complexity: "simple",
-      rotationCount: 1,
-      discussionFrames: ["비 가능성과 휴대 부담"],
-      summary: "사용자는 내일 비 가능성과 우산을 들고 다니는 불편 사이에서 현실적인 선택을 묻고 있습니다.",
-    };
-  }
-
-  if (/박카스/i.test(normalized) && /(젊|20|30|아저씨|MZ|mz)/.test(normalized)) {
-    return {
-      topic: "박카스가 젊은 층에게 다시 매력적으로 다가가는 방법",
-      coreQuestion: "박카스는 어떻게 해야 기존 이미지를 넘고 20~30대에게 자연스럽게 소비될 수 있을까?",
-      inferredOptions: ["기존 브랜드 유지", "젊은 층 전용 서브라인", "제품·패키지 리뉴얼"],
-      inferredConcerns: ["기존 이미지가 강함", "억지스러운 리브랜딩 거부감", "제품 경험이 오래돼 보일 수 있음"],
-      focusAreas: ["브랜드 경험", "제품 경험", "차별성", "실행"],
-      complexity: "normal",
-      rotationCount: 2,
-      discussionFrames: ["브랜드 이미지 재해석", "제품 경험과 구매 전환"],
-      summary: "사용자는 박카스가 젊은 층에게 다시 선택받으려면 어떤 방향으로 바뀌어야 하는지 묻고 있습니다.",
-    };
-  }
-
-  if (/(AI|ai|인공지능|챗봇).*(상담|고객)|(?:상담|고객).*(AI|ai|인공지능|챗봇)/.test(normalized)) {
-    return {
-      topic: "AI 상담 서비스 도입 여부",
-      coreQuestion: "AI 상담 서비스를 도입하면 고객 경험과 운영 효율이 실제로 개선될까?",
-      inferredOptions: ["즉시 도입", "제한된 파일럿", "기존 상담 체계 유지"],
-      inferredConcerns: ["답변 품질", "보안과 개인정보", "고객 불만", "운영 비용"],
-      focusAreas: ["수요", "품질", "보안", "운영"],
-      complexity: "normal",
-      rotationCount: 2,
-      discussionFrames: ["고객 경험과 운영 효율", "품질·보안·운영 부담"],
-      summary: "AI 상담 서비스를 도입할지, 먼저 작게 검증할지 판단해야 하는 안건입니다.",
-    };
-  }
-
-  if (/(신입|경력|경력직).*(뽑|채용)|(?:뽑|채용).*(신입|경력|경력직)/.test(normalized)) {
-    return {
-      topic: "신입과 경력직 중 채용 우선순위 결정",
-      coreQuestion: "현재 조직 상황에서는 신입과 경력직 중 누구를 뽑는 것이 더 현실적일까?",
-      inferredOptions: ["신입 채용", "경력직 채용", "역할을 나눠 단계적 채용"],
-      inferredConcerns: ["교육 기간", "인건비", "조직 적응", "즉시 성과"],
-      focusAreas: ["성과", "적응", "비용", "조직"],
-      complexity: "normal",
-      rotationCount: 2,
-      discussionFrames: ["즉시 성과와 교육 비용", "조직 적응과 장기 성장"],
-      summary: "채용 대상의 장단점을 비교해 현재 필요한 인재 유형을 결정해야 하는 안건입니다.",
-    };
-  }
-
-  if (/(감기약|의약품|제약|약).*(출시|검토|콘셉트)|(?:출시|검토|콘셉트).*(감기약|의약품|제약|약)/.test(normalized)) {
-    return {
-      topic: "새 감기약 콘셉트 출시 검토",
-      coreQuestion: "새 감기약 콘셉트는 규제, 효능, 소비자 수요 측면에서 출시 검토할 만할까?",
-      inferredOptions: ["출시 준비", "컨셉 테스트", "보류 후 추가 검증"],
-      inferredConcerns: ["효능 근거", "안전성", "규제 가능성", "시장 차별성"],
-      focusAreas: ["효능", "안전성", "규제", "시장"],
-      complexity: "complex",
-      rotationCount: 3,
-      discussionFrames: ["효능·안전성 근거", "규제와 임상 현실성", "시장 차별성과 출시 조건"],
-      summary: "새 감기약 콘셉트가 실제 출시 후보가 될 수 있는지 공식 근거와 시장성을 함께 봐야 하는 안건입니다.",
-    };
-  }
-
   const readableTopic = makeReadableTopic(title || normalized);
   const complexity = inferFallbackComplexity(normalized, profile.type);
   const rotationCount = complexity === "simple" ? 1 : complexity === "complex" ? 3 : 2;
   return {
     topic: readableTopic,
-    coreQuestion: `${readableTopic}에서 실제로 선택해야 할 현실적인 방향은 무엇일까?`,
+    coreQuestion: `사용자가 묻는 "${readableTopic}" 안건에서 실제로 판단해야 할 핵심 기준은 무엇일까?`,
     inferredOptions: ["진행", "작게 검증", "보류"],
     inferredConcerns: ["수요 불확실성", "비용과 실행 부담", "실패 시 손실"],
     focusAreas: defaultFocusAreas(profile.type),
     complexity,
     rotationCount,
     discussionFrames: defaultDiscussionFrames(readableTopic, profile.type, rotationCount),
-    summary: `사용자가 적은 안건은 "${readableTopic}"에 대한 현실적 판단이 필요하다는 의미로 정리됩니다.`,
+    summary: `사용자가 적은 안건은 "${readableTopic}"에 대해 현실적인 판단 기준과 실행 조건을 정리해야 한다는 의미로 해석됩니다.`,
   };
 }
 
@@ -634,6 +572,10 @@ function buildTurnPrompt(input: NormalizedInput, profile: TopicProfile, plan: Tu
   const meta = speakerMeta[plan.speaker];
   const previous = history.at(-1) ?? "없음";
   const recent = history.slice(-4).map((item) => `- ${item}`).join("\n") || "- 없음";
+  const roleRule = plan.speaker === "gemini"
+    ? `- Gemini는 Claude와 GPT의 의견을 모두 받아서 균형점, 판단 기준, 현실적 다음 조건을 말합니다.
+- Gemini 발언은 짧게 끊기면 안 됩니다. 반드시 2~4문장으로 완결합니다.`
+    : "";
   const outputRule = plan.phase === "topic"
     ? `- 아래 형식을 그대로 지킵니다.
 주제:
@@ -684,142 +626,78 @@ ${recent}
 출력 규칙:
 - 한국어만 사용합니다.
 - 이름으로 시작하지 않습니다.
+- 마지막 문장은 반드시 완결된 한국어 문장으로 끝냅니다.
+${roleRule}
 ${outputRule}
 `;
 }
 
 function fallbackTurn(input: NormalizedInput, profile: TopicProfile, plan: TurnPlan, history: string[]) {
-  if (isUmbrellaAgenda(input)) {
-    return fallbackUmbrellaTurn(input, plan);
-  }
-
-  if (isBacchusAgenda(input)) {
-    return fallbackBacchusTurn(input, plan);
-  }
-
   const previousName = previousSpeakerName(history);
-  const subject = input.title;
+  const subject = input.agenda.topic;
+  const question = input.agenda.coreQuestion;
+  const focusText = input.agenda.focusAreas.join(", ") || profile.decisionFrame;
   const optionsText = input.options ? ` 선택지는 ${input.options}입니다.` : "";
   const riskText = input.risks ? ` 입력된 우려는 ${input.risks}입니다.` : "";
 
   if (plan.phase === "topic") {
-    return `주제:\n${subject}\n\n핵심 질문:\n${input.coreQuestion}${optionsText || riskText ? `\n\n참고:\n${`${optionsText}${riskText}`.trim()}` : ""}`;
+    return `주제:\n${subject}\n\n핵심 질문:\n${question}${optionsText || riskText ? `\n\n참고:\n${`${optionsText}${riskText}`.trim()}` : ""}`;
   }
 
   if (plan.phase === "opening" && plan.speaker === "claude") {
-    return `사회자가 잡은 핵심 질문에 동의합니다. 저는 이 안건이 사용자의 불편이나 조직의 비효율을 줄일 가능성은 있다고 봅니다. 다만 가능성은 선언이 아니라 작은 검증에서 확인되어야 하므로, 처음부터 크게 밀기보다 반응을 볼 수 있는 범위를 좁혀야 합니다.`;
+    return `사회자가 정리한 "${question}"이라는 질문에 동의합니다. 저는 이 안건이 사용자의 불편이나 조직의 비효율을 줄일 가능성은 있다고 봅니다. 다만 가능성은 선언이 아니라 작은 검증에서 확인되어야 하므로, 처음부터 크게 밀기보다 ${focusText} 기준으로 반응을 볼 수 있는 범위를 좁혀야 합니다.`;
   }
 
   if (plan.phase === "opening" && plan.speaker === "gpt") {
-    return `Claude의 가능성 평가는 인정합니다. 다만 가능성이 있다는 것과 실제로 비용을 감당하며 실행할 수 있다는 것은 다른 문제입니다. 지금은 수요, 비용, 책임 주체, 실패했을 때의 손실을 숫자로 확인하지 않으면 낙관이 너무 앞설 수 있습니다.`;
+    return `Claude의 가능성 평가는 인정합니다. 다만 "${subject}"에서 가능성이 있다는 것과 실제로 비용을 감당하며 실행할 수 있다는 것은 다른 문제입니다. 지금은 ${input.risks || "수요, 비용, 책임 주체, 실패했을 때의 손실"}을 확인하지 않으면 낙관이 너무 앞설 수 있습니다.`;
   }
 
   if (plan.phase === "opening" && plan.speaker === "gemini") {
-    return `두 의견 모두 타당합니다. 핵심은 이 안건이 매력적인가가 아니라, 불편함이나 기회가 실제 행동 변화로 이어질 만큼 강한가입니다. 그래서 판단 기준은 수요 강도, 대체 가능성, 실행 비용, 실패 시 손실로 나눠보는 것이 좋습니다.`;
+    return `두 의견 모두 타당합니다. 결국 핵심은 "${question}"에 대해 매력만 볼 것이 아니라, 실제 행동 변화나 실행 판단으로 이어질 만큼 근거가 있는지입니다. 그래서 판단 기준은 ${focusText}로 나누고, 각 기준에서 진행과 보류의 조건을 분명히 하는 것이 좋습니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "claude") {
-    return `${previousName}의 우려는 필요합니다. 다만 "${plan.roundTitle}" 쟁점에서는 멈추는 것보다 가장 작은 범위에서 확인하는 방식이 가능성을 살릴 수 있습니다. 저는 전면 추진보다 제한된 실험으로 전환하는 접근이 현실적이라고 봅니다.`;
+    return `${previousName}의 우려는 필요합니다. 다만 "${plan.roundTitle}" 쟁점에서는 "${subject}"를 바로 확대하기보다 가장 작은 범위에서 확인하는 방식이 가능성을 살릴 수 있습니다. 저는 전면 추진보다 제한된 실험으로 전환해 ${focusText}를 확인하는 접근이 현실적이라고 봅니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gpt") {
-    return `Claude의 제한된 실험 제안은 이전보다 현실적입니다. 하지만 실험도 성공 기준과 중단 기준이 없으면 결국 시간을 쓰고도 결론을 못 냅니다. 최소한 비용 한도, 검증 기간, 책임자, 실패로 판단할 조건을 먼저 정해야 합니다.`;
+    return `Claude의 제한된 실험 제안은 이전보다 현실적입니다. 하지만 "${question}"에 대한 성공 기준과 중단 기준이 없으면 시간을 쓰고도 결론을 못 냅니다. 최소한 비용 한도, 검증 기간, 책임자, 실패로 판단할 조건을 먼저 정해야 합니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gemini") {
-    return `GPT의 지적까지 반영하면 결론은 단순한 찬반이 아닙니다. 실행한다면 작게 하되, 성공 기준과 중단 기준을 먼저 정해야 합니다. 이 안건의 균형점은 가능성을 버리지 않으면서도 비용과 책임을 통제하는 조건부 검증입니다.`;
+    return `GPT의 지적까지 반영하면 결론은 단순한 찬반이 아닙니다. "${subject}"는 가능성을 버리지 않되, ${focusText} 기준에서 성공 조건과 중단 조건을 먼저 정해야 합니다. 이 안건의 균형점은 가능성을 확인하면서도 비용과 책임을 통제하는 조건부 검증입니다.`;
   }
 
-  return `두 의견을 종합하면 핵심 쟁점은 네 가지입니다. 실제 수요가 충분히 강한지, 기존 방식보다 분명히 나은지, 비용과 운영 부담을 감당할 수 있는지, 실패했을 때 멈출 기준이 있는지입니다. 최종 결론은 이 네 기준을 확인할 수 있는 작은 실행 계획이 있느냐에 달려 있습니다.`;
+  return `두 의견을 종합하면 "${subject}"의 핵심 쟁점은 ${focusText}입니다. 실제 수요와 근거가 충분한지, 기존 방식보다 나은지, 비용과 운영 부담을 감당할 수 있는지, 실패했을 때 멈출 기준이 있는지를 확인해야 합니다. 최종 결론은 이 기준을 확인할 수 있는 작은 실행 계획이 있느냐에 달려 있습니다.`;
 }
 
-function fallbackUmbrellaTurn(input: NormalizedInput, plan: TurnPlan) {
-  if (plan.phase === "topic") {
-    return `주제:\n${input.agenda.topic}\n\n핵심 질문:\n${input.agenda.coreQuestion}`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "claude") {
-    return `사회자가 잡은 질문에 동의합니다. 비가 올 가능성이 조금이라도 있고 이동 시간이 길다면 작은 우산을 챙기는 쪽이 더 안전합니다. 젖었을 때 생기는 불편은 한 번 발생하면 되돌리기 어렵기 때문입니다.`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "gpt") {
-    return `그 판단은 이해됩니다. 다만 강수 가능성이 낮거나 실내 이동이 대부분이라면 우산은 하루 종일 들고 다니는 짐이 될 수 있습니다. 날씨 앱의 시간대별 예보와 실제 이동 동선을 같이 봐야 합니다.`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "gemini") {
-    return `두 의견을 합치면 핵심은 비가 오느냐보다, 비가 왔을 때의 손해가 우산 휴대 부담보다 큰가입니다. 이동 거리가 길거나 중요한 일정이 있으면 작은 우산, 짧은 이동이면 예보를 한 번 더 확인하는 선택이 균형적입니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "claude") {
-    return `Gemini의 기준에 동의합니다. 중요한 약속이나 외부 이동이 있다면 비가 조금만 와도 불편이 커지므로 작은 접이식 우산이 합리적입니다. 부담을 줄이려면 큰 우산보다 가벼운 우산으로 타협하면 됩니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gpt") {
-    return `그 타협안은 현실적입니다. 다만 강수 확률이 낮고 이동이 대부분 지하철이나 건물 안이라면 우산보다 가방 방수나 편의점 구매 같은 대안이 나을 수 있습니다. 우산을 챙기는 기준은 비 가능성보다 외부 노출 시간으로 잡는 게 맞습니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gemini") {
-    return `GPT의 지적까지 반영하면 결론은 간단합니다. 외부 이동이 길거나 중요한 일정이면 작은 우산을 챙기고, 이동이 짧으면 출발 직전 예보를 다시 보고 결정하면 됩니다. 이 질문은 완벽한 예측보다 불편을 줄이는 선택의 문제입니다.`;
-  }
-
-  return `핵심 쟁점은 두 가지입니다. 비를 맞았을 때의 불편이 얼마나 큰지, 그리고 우산을 들고 다니는 부담이 어느 정도인지입니다. 외부 이동이 길면 챙기는 쪽, 이동이 짧고 실내 위주라면 출발 직전 예보를 보고 결정하는 쪽이 현실적입니다.`;
-}
-
-function fallbackBacchusTurn(input: NormalizedInput, plan: TurnPlan) {
-  if (plan.phase === "topic") {
-    return `주제:\n${input.agenda.topic}\n\n핵심 질문:\n${input.agenda.coreQuestion}`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "claude") {
-    return `사회자가 잡은 질문에 동의합니다. 저는 박카스가 오래된 인지도와 레트로 감성을 자산으로 다시 해석될 여지가 있다고 봅니다. 다만 피로회복제 이미지만 밀면 새 소비 이유가 약하니, 생활 루틴 속 에너지 브랜드로 풀어야 합니다.`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "gpt") {
-    return `가능성은 인정합니다. 다만 젊은 층에게는 이미 에너지 드링크와 커피가 강한 대안이고, 박카스의 병 디자인과 맛은 오래된 인상으로 받아들여질 수 있습니다. 단순히 광고 톤만 바꾸면 억지로 젊어진다는 반응이 나올 가능성이 있습니다.`;
-  }
-
-  if (plan.phase === "opening" && plan.speaker === "gemini") {
-    return `두 의견 모두 타당합니다. 결국 핵심은 박카스가 젊은 층에게 효능 제품으로만 보일지, 일상 맥락에 맞는 에너지 선택지로 보일지입니다. 그래서 제품 경험, 소비 상황, 브랜드 톤을 같이 바꿀 수 있는지가 판단 기준입니다.`;
-  }
-
-  const isProductFrame = /제품|구매|전환|패키지|경험/.test(plan.roundTitle);
-
-  if (plan.phase === "discussion" && plan.speaker === "claude" && !isProductFrame) {
-    return `Gemini의 맥락 지적에 동의합니다. 박카스는 글로벌 에너지 드링크를 흉내 내기보다 시험기간, 출근길, 새벽 작업, 편의점 같은 한국적인 소비 순간을 잡을 수 있습니다. 이 방향은 기존 신뢰감을 버리지 않으면서 젊은 층에게 새 이유를 줄 수 있습니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gpt" && !isProductFrame) {
-    return `그 방향은 이전보다 현실적입니다. 하지만 소비 순간을 잡는 것만으로는 부족하고, 실제 제품을 마셨을 때 젊은 층이 낡았다고 느끼면 재구매로 이어지기 어렵습니다. 특히 당류, 카페인 인식, 패키지 형태는 반드시 검증해야 합니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gemini" && !isProductFrame) {
-    return `GPT의 지적까지 반영하면 브랜딩과 제품 경험을 분리해서 보면 안 됩니다. 박카스다운 신뢰감은 남기되, 젊은 층이 고를 만한 맛, 형태, 패키지를 작게 테스트해야 합니다. 완전한 리브랜딩보다 제한된 서브라인 검증이 균형점으로 보입니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "claude") {
-    return `서브라인 접근에는 동의합니다. 예를 들어 저당이나 제로, 캔 타입, 작업 루틴용 패키지처럼 한두 가지 실험만 해도 반응을 볼 수 있습니다. 기존 박카스를 흔들지 않고 젊은 층용 선택지를 따로 만들 수 있다는 점이 장점입니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gpt") {
-    return `그 실험은 가능하지만 성공 기준이 없으면 또 하나의 한정판으로 끝날 수 있습니다. 편의점 판매 회전율, 재구매, SNS 반응, 기존 고객 이탈 여부를 같이 봐야 합니다. 특히 억지로 힙한 척하는 표현은 오히려 브랜드 신뢰를 깎을 수 있습니다.`;
-  }
-
-  if (plan.phase === "discussion" && plan.speaker === "gemini") {
-    return `두 의견을 합치면 방향은 명확합니다. 박카스 전체를 바꾸기보다 젊은 층 전용 실험 라인을 만들고, 제품 경험과 소비 맥락을 동시에 검증해야 합니다. 성공 기준은 인지도보다 실제 구매와 재구매로 잡는 것이 맞습니다.`;
-  }
-
-  return `핵심 쟁점은 네 가지입니다. 박카스의 기존 이미지가 젊은 층에게 자산인지 장벽인지, 제품 맛과 패키지가 실제로 바뀌어야 하는지, 서브라인이 기존 신뢰를 해치지 않는지, 편의점과 일상 루틴에서 재구매가 일어나는지입니다. 최종 결론은 완전한 리브랜딩이 아니라 제한된 실험의 성공 가능성에 달려 있습니다.`;
-}
-
-function shouldUseFallback(message: string, plan: TurnPlan, history: string[]) {
+function shouldUseFallback(message: string, plan: TurnPlan, history: string[], input: NormalizedInput) {
   const normalized = message.trim();
 
   if (!normalized) return true;
   if (containsForbiddenTone(normalized)) return true;
   if (countSentences(normalized) > 5) return true;
+  if (plan.phase !== "topic" && countSentences(normalized) < 2) return true;
+  if (plan.phase !== "topic" && !looksCompleteSentence(normalized)) return true;
+  if (plan.phase !== "topic" && plan.speaker === "gemini" && normalized.length < 90) return true;
+  if (plan.phase !== "topic" && !hasAgendaOverlap(normalized, input)) return true;
   if (plan.phase !== "topic" && history.length && !hasConnectionSignal(normalized)) return true;
 
   return false;
+}
+
+function isSafeFallback(message: string, plan: TurnPlan, input: NormalizedInput) {
+  const normalized = message.trim();
+
+  if (!normalized) return false;
+  if (containsForbiddenTone(normalized)) return false;
+
+  if (plan.phase !== "topic") {
+    if (countSentences(normalized) < 2) return false;
+    if (!looksCompleteSentence(normalized)) return false;
+  }
+
+  return true;
 }
 
 function cleanTurnMessage(message: string) {
@@ -837,8 +715,79 @@ function hasConnectionSignal(value: string) {
   return /(동의|다만|하지만|그 지적|그 우려|그 의견|그 부분|두 의견|두 관점|사회자|Claude|GPT|Gemini|앞선|이전|인정|반대로|보완)/.test(value);
 }
 
+function hasAgendaOverlap(value: string, input: NormalizedInput) {
+  const keywords = agendaKeywords(input);
+
+  if (!keywords.length) {
+    return true;
+  }
+
+  const haystack = normalizeKeywordText(value);
+  return keywords.some((keyword) => haystack.includes(keyword));
+}
+
+function agendaKeywords(input: NormalizedInput) {
+  const source = [
+    input.agenda.topic,
+    input.agenda.coreQuestion,
+    input.originalContent,
+    input.options,
+    input.risks,
+    input.agenda.focusAreas.join(" "),
+  ].join(" ");
+
+  const stopwords = new Set([
+    "사용자",
+    "안건",
+    "핵심",
+    "질문",
+    "판단",
+    "기준",
+    "무엇",
+    "어떻게",
+    "있는지",
+    "해야",
+    "할지",
+    "할까",
+    "될까",
+    "대한",
+    "관련",
+    "정리",
+    "현실적",
+    "방향",
+    "진행",
+    "검토",
+    "보류",
+    "비용",
+    "리스크",
+    "실행",
+    "수요",
+    "근거",
+  ]);
+
+  return Array.from(
+    new Set(
+      source
+        .replace(/[^0-9A-Za-z가-힣\s]/g, " ")
+        .split(/\s+/)
+        .map((token) => normalizeKeywordText(token))
+        .map((token) => token.replace(/(에서는|에서|에게|으로|부터|까지|하고|이며|이고|은|는|이|가|을|를|의|와|과|도|만|로)$/u, ""))
+        .filter((token) => token.length >= 2 && !stopwords.has(token)),
+    ),
+  ).slice(0, 12);
+}
+
+function normalizeKeywordText(value: string) {
+  return value.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
+}
+
 function countSentences(value: string) {
   return value.split(/[.!?。！？]\s+|[.!?。！？]$/).filter((part) => part.trim()).length;
+}
+
+function looksCompleteSentence(value: string) {
+  const normalized = value.trim();
+  return /[.!?。！？]$/.test(normalized) || /(다|요|니다|습니다|됩니다|입니다)$/.test(normalized);
 }
 
 async function generateFinalReport(
@@ -887,112 +836,52 @@ JSON 형식:
   for (const generator of [() => askGemini(prompt), () => askOpenAI(prompt)]) {
     try {
       const parsed = parseFinalReport(await generator());
-      return {
-        heading: "최종 결론",
-        recommendation: normalizeRecommendation(parsed.recommendation),
-        summary: parsed.summary || fallback.summary,
-        keyReasons: normalizeList(parsed.keyReasons, fallback.keyReasons),
-        keyRisks: normalizeList(parsed.keyRisks, fallback.keyRisks),
-        conditions: normalizeList(parsed.conditions, fallback.conditions),
-        nextActions: normalizeList(parsed.nextActions, fallback.nextActions),
-        evidenceSources: normalizeSources([...(parsed.evidenceSources ?? []), ...evidenceSources]),
-        sectionLabels: finalSectionLabels,
-      };
+      const report = normalizeGeneratedFinalReport(parsed, input, evidenceSources);
+
+      if (report) {
+        return report;
+      }
+
+      throw new Error("Final report did not pass agenda validation");
     } catch (error) {
       console.error("[debate-stream] final generator failed", error);
     }
+  }
+
+  if (!isGenericFallbackFinalUsable(fallback)) {
+    throw new Error(unstableAiMessage);
   }
 
   return fallback;
 }
 
 function fallbackFinal(input: NormalizedInput, profile: TopicProfile, sources: string[]): FinalReport {
-  if (isUmbrellaAgenda(input)) {
-    return {
-      heading: "최종 결론",
-      recommendation: "조건부 추천",
-      summary: "외부 이동이 길거나 중요한 일정이 있으면 작은 우산을 챙기는 편이 안전합니다. 이동이 짧고 실내 위주라면 출발 직전 시간대별 예보를 다시 보고 결정해도 충분합니다.",
-      keyReasons: [
-        "비를 맞았을 때의 불편은 우산 휴대 부담보다 클 수 있습니다.",
-        "다만 이동이 짧거나 실내 동선이면 우산이 불필요한 짐이 될 수 있습니다.",
-        "작은 접이식 우산은 안전성과 휴대 부담 사이의 현실적인 타협입니다.",
-      ],
-      keyRisks: [
-        "예보가 바뀔 수 있으므로 출발 직전 확인이 필요합니다.",
-        "큰 우산은 하루 종일 들고 다니기 불편할 수 있습니다.",
-      ],
-      conditions: [
-        "외부 이동 시간이 긴가",
-        "비를 맞으면 일정에 지장이 큰가",
-        "가방에 작은 우산을 넣을 여유가 있는가",
-      ],
-      nextActions: [
-        "출발 전 시간대별 강수 확률을 확인합니다.",
-        "외부 이동이 있으면 작은 접이식 우산을 챙깁니다.",
-        "실내 이동 위주라면 가까운 구매 대안만 확인합니다.",
-      ],
-      evidenceSources: normalizeSources(sources),
-      sectionLabels: finalSectionLabels,
-    };
-  }
-
-  if (isBacchusAgenda(input)) {
-    return {
-      heading: "최종 결론",
-      recommendation: "조건부 추천",
-      summary: "박카스는 인지도와 신뢰가 강해 젊은 층 대상 재해석 가능성이 있습니다. 다만 기존 이미지만으로 자연 유입을 만들기는 어렵고, 제품 경험과 소비 맥락을 함께 바꿔야 합니다. 따라서 전면 리브랜딩보다 젊은 층 전용 서브라인을 작게 검증하는 방향이 현실적입니다.",
-      keyReasons: [
-        "기존 인지도는 강한 자산이라 새 해석의 출발점이 될 수 있습니다.",
-        "젊은 층에게는 맛, 패키지, 당류, 소비 상황 같은 실제 경험이 중요합니다.",
-        "서브라인 실험은 기존 충성 고객을 흔들지 않으면서 새 수요를 확인할 수 있습니다.",
-      ],
-      keyRisks: [
-        "억지로 젊어 보이려 하면 오히려 거부감이 생길 수 있습니다.",
-        "제품 경험이 그대로면 광고만 바뀌어도 재구매가 약할 수 있습니다.",
-        "기존 박카스의 신뢰감이 흐려지지 않도록 브랜드 경계를 분명히 해야 합니다.",
-      ],
-      conditions: [
-        "젊은 층이 실제로 선택할 소비 상황이 있는가",
-        "기존 이미지가 자산으로 작동할 수 있는가",
-        "제품과 패키지가 젊은 층 기준에 맞는가",
-        "기존 고객 이탈 없이 서브라인을 운영할 수 있는가",
-      ],
-      nextActions: [
-        "저당 또는 제로, 캔 타입, 젊은 층용 패키지 중 한두 가지로 테스트합니다.",
-        "시험기간, 새벽 작업, 출근길, 운동 전처럼 실제 소비 순간을 정해 메시지를 검증합니다.",
-        "편의점 판매 회전율, 재구매, SNS 반응, 기존 고객 반응을 함께 봅니다.",
-      ],
-      evidenceSources: normalizeSources(sources),
-      sectionLabels: finalSectionLabels,
-    };
-  }
-
   const focus = input.focusAreas.length ? input.focusAreas.join(", ") : "수요, 비용, 리스크, 실행";
   const hasRisk = input.risks.trim().length > 0;
 
   return {
     heading: "최종 결론",
     recommendation: hasRisk ? "조건부 추천" : "보류",
-    summary: `"${input.title}" 안건은 가능성과 리스크를 함께 볼 필요가 있습니다. 지금 정보만으로 단정하기보다 ${focus}을 같은 기준 위에 놓고 작게 검증하는 편이 안전합니다. 실행한다면 성공 기준과 중단 기준을 먼저 정해야 합니다.`,
+    summary: `"${input.agenda.topic}" 안건은 "${input.agenda.coreQuestion}"라는 질문을 기준으로 가능성과 리스크를 함께 봐야 합니다. 지금 정보만으로 단정하기보다 ${focus}을 같은 기준 위에 놓고 작게 검증하는 편이 안전합니다. 실행한다면 성공 기준과 중단 기준을 먼저 정해야 합니다.`,
     keyReasons: [
       `${profile.decisionFrame}`,
-      "가능성은 있지만 실제 수요와 실행 여건을 확인해야 합니다.",
-      "작은 검증으로 시작하면 실패 비용을 줄이면서 판단 근거를 만들 수 있습니다.",
+      `"${input.agenda.topic}"은 가능성은 있지만 실제 수요와 실행 여건을 확인해야 합니다.`,
+      `작은 검증으로 시작하면 "${input.agenda.coreQuestion}"에 대한 판단 근거를 만들 수 있습니다.`,
     ],
     keyRisks: [
-      "근거 없이 확대하면 비용과 책임 범위가 커질 수 있습니다.",
-      "사용자 행동이나 조직 실행력이 예상보다 약할 수 있습니다.",
+      input.risks || "근거 없이 확대하면 비용과 책임 범위가 커질 수 있습니다.",
+      `"${input.agenda.topic}"에서 사용자 행동이나 조직 실행력이 예상보다 약할 수 있습니다.`,
       "중단 기준이 없으면 검증이 아니라 관성적 진행이 될 수 있습니다.",
     ],
     conditions: [
-      "실제 수요가 충분히 강한가",
-      "기존 방식보다 분명히 나은가",
+      `${input.agenda.topic}의 실제 수요가 충분히 강한가`,
+      `${input.agenda.coreQuestion}에 답할 만큼 기존 방식보다 분명히 나은가`,
       "비용 대비 효과가 나오는가",
       "실패했을 때 멈출 기준이 있는가",
     ],
     nextActions: [
-      "대상 범위와 검증 기간을 작게 정합니다.",
-      "성공 기준과 중단 기준을 숫자 또는 관찰 가능한 기준으로 정합니다.",
+      `"${input.agenda.topic}"의 대상 범위와 검증 기간을 작게 정합니다.`,
+      `${focus} 기준으로 성공 기준과 중단 기준을 숫자 또는 관찰 가능한 기준으로 정합니다.`,
       "검증 후 추천, 보류, 비추천 중 하나로 다시 판단합니다.",
     ],
     evidenceSources: normalizeSources(sources),
@@ -1000,19 +889,77 @@ function fallbackFinal(input: NormalizedInput, profile: TopicProfile, sources: s
   };
 }
 
-function isBacchusAgenda(input: NormalizedInput) {
-  return /박카스/.test(`${input.title}\n${input.coreQuestion}\n${input.originalContent}`);
+function normalizeGeneratedFinalReport(
+  parsed: Partial<FinalReport>,
+  input: NormalizedInput,
+  evidenceSources: Set<string>,
+): FinalReport | null {
+  const report: FinalReport = {
+    heading: "최종 결론",
+    recommendation: normalizeRecommendation(parsed.recommendation),
+    summary: cleanText(parsed.summary, ""),
+    keyReasons: normalizeList(parsed.keyReasons, []),
+    keyRisks: normalizeList(parsed.keyRisks, []),
+    conditions: normalizeList(parsed.conditions, []),
+    nextActions: normalizeList(parsed.nextActions, []),
+    evidenceSources: normalizeSources([...(parsed.evidenceSources ?? []), ...evidenceSources]),
+    sectionLabels: finalSectionLabels,
+  };
+
+  return isFinalReportUsable(report, input) ? report : null;
 }
 
-function isUmbrellaAgenda(input: NormalizedInput) {
-  return /(우산|비|날씨)/.test(`${input.title}\n${input.coreQuestion}\n${input.originalContent}`);
+function isFinalReportUsable(report: FinalReport, input: NormalizedInput) {
+  const combined = [
+    report.summary,
+    ...report.keyReasons,
+    ...report.keyRisks,
+    ...report.conditions,
+    ...report.nextActions,
+  ].join("\n");
+
+  if (!report.summary || report.summary.length < 20) return false;
+  if (!looksCompleteSentence(report.summary)) return false;
+  if (containsForbiddenTone(combined)) return false;
+  if (!hasAgendaOverlap(combined, input)) return false;
+  if (report.keyReasons.length < 1) return false;
+  if (report.keyRisks.length < 1) return false;
+  if (report.conditions.length < 1) return false;
+  if (report.nextActions.length < 1) return false;
+
+  return true;
+}
+
+function isGenericFallbackFinalUsable(report: FinalReport) {
+  const combined = [
+    report.summary,
+    ...report.keyReasons,
+    ...report.keyRisks,
+    ...report.conditions,
+    ...report.nextActions,
+  ].join("\n");
+
+  if (!report.summary || report.summary.length < 20) return false;
+  if (!looksCompleteSentence(report.summary)) return false;
+  if (containsForbiddenTone(combined)) return false;
+  if (!report.keyReasons.length) return false;
+  if (!report.keyRisks.length) return false;
+  if (!report.conditions.length) return false;
+  if (!report.nextActions.length) return false;
+
+  return true;
 }
 
 function classifyTopic(text: string): TopicProfile {
   const normalized = text.toLowerCase();
   const hasAny = (keywords: string[]) => keywords.some((keyword) => normalized.includes(keyword.toLowerCase()));
 
-  if (hasAny(["감기약", "의약품", "약효", "부작용", "임상", "제약", "otc", "처방", "환자", "fda", "mfds", "식약처", "의료", "치료", "헬스케어", "바이오"])) {
+  const medicalProductPattern =
+    /(?:의약|약품|약물|치료제|약효|부작용|임상|제약|otc|처방|환자|fda|mfds|식약처|의료|치료|헬스케어|바이오|복용|투약)/i;
+  const possibleMedicineLaunch =
+    /[가-힣]{2,}약/.test(normalized) && /(출시|개발|검토|콘셉트|효능|안전|부작용|복용|투약)/.test(normalized);
+
+  if (medicalProductPattern.test(normalized) || possibleMedicineLaunch) {
     return {
       type: "pharma",
       label: "제약·의료 의사결정",
@@ -1173,7 +1120,7 @@ function inferFallbackComplexity(text: string, topic: TopicType): AgendaComplexi
 
   if (
     text.length <= 60 &&
-    /(우산|날씨|비|옷|점심|저녁|메뉴|갈까|살까|먹을까|입을까|가져갈까|챙길까)/.test(text)
+    /(옷|점심|저녁|메뉴|갈까|살까|먹을까|입을까|가져갈까|챙길까)/.test(text)
   ) {
     return "simple";
   }
