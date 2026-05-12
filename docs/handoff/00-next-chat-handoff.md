@@ -15,6 +15,7 @@ C:\Users\unico\Documents\Codex\2026-05-07\new-ai-toktok-debate
 먼저 아래 문서를 읽고 이어서 작업해줘.
 - PROJECT_HANDOFF.md
 - docs/handoff/00-next-chat-handoff.md
+- docs/handoff/09-final-recommendation-logic.md
 
 이 프로젝트는 사장님용 new AI 톡톡 토론입니다.
 기존 AI 톡톡(new-chat)은 건드리지 말고, 로컬에서만 교수단 심층 토론 버전을 이어서 다듬어줘.

@@ -816,6 +816,12 @@ ${history.map((item) => `- ${item}`).join("\n")}
 
 규칙:
 - 판단은 "추천", "조건부 추천", "보류", "비추천" 중 하나만 사용합니다.
+- 판단 기준은 아래처럼 구분합니다.
+  - 추천: 근거가 충분하고, 리스크가 낮거나 통제 가능하며, 지금 실행해도 손실이 크지 않을 때.
+  - 조건부 추천: 가능성은 있지만 불확실성이 있어 작게 검증하거나 조건을 걸고 진행해야 할 때.
+  - 보류: 정보가 부족하거나, 지금 결정하면 추측이 너무 많아 먼저 확인이 필요할 때.
+  - 비추천: 근거가 약하고 위험이나 손실이 크며, 실패 시 되돌리기 어려울 때.
+- "애매함"만으로 조건부 추천을 선택하지 마세요. 애매하지만 작게 해볼 수 있으면 조건부 추천, 애매하고 지금 움직이면 위험하면 보류입니다.
 - 보고서 말투를 과하게 쓰지 말고, 실제 회의 결론처럼 간결하게 정리합니다.
 - 이유, 현실적인 실행 방향, 주의할 점은 구체적으로 씁니다.
 - 강한 시장/기술/의료 주장은 근거 자료가 있을 때만 씁니다.
@@ -857,11 +863,10 @@ JSON 형식:
 
 function fallbackFinal(input: NormalizedInput, profile: TopicProfile, sources: string[]): FinalReport {
   const focus = input.focusAreas.length ? input.focusAreas.join(", ") : "수요, 비용, 리스크, 실행";
-  const hasRisk = input.risks.trim().length > 0;
 
   return {
     heading: "최종 결론",
-    recommendation: hasRisk ? "조건부 추천" : "보류",
+    recommendation: "보류",
     summary: `"${input.agenda.topic}" 안건은 "${input.agenda.coreQuestion}"라는 질문을 기준으로 가능성과 리스크를 함께 봐야 합니다. 지금 정보만으로 단정하기보다 ${focus}을 같은 기준 위에 놓고 작게 검증하는 편이 안전합니다. 실행한다면 성공 기준과 중단 기준을 먼저 정해야 합니다.`,
     keyReasons: [
       `${profile.decisionFrame}`,
@@ -894,9 +899,15 @@ function normalizeGeneratedFinalReport(
   input: NormalizedInput,
   evidenceSources: Set<string>,
 ): FinalReport | null {
+  const recommendation = normalizeRecommendation(parsed.recommendation);
+
+  if (!recommendation) {
+    return null;
+  }
+
   const report: FinalReport = {
     heading: "최종 결론",
-    recommendation: normalizeRecommendation(parsed.recommendation),
+    recommendation,
     summary: cleanText(parsed.summary, ""),
     keyReasons: normalizeList(parsed.keyReasons, []),
     keyRisks: normalizeList(parsed.keyRisks, []),
@@ -1044,17 +1055,24 @@ function parseFinalReport(text: string): Partial<FinalReport> {
   }
 }
 
-function normalizeRecommendation(value: unknown): Recommendation {
+function normalizeRecommendation(value: unknown): Recommendation | null {
   if (value === "추천" || value === "조건부 추천" || value === "보류" || value === "비추천") {
     return value;
   }
 
   const text = String(value ?? "");
 
-  if (/비추천|중단|하지 않는/.test(text)) return "비추천";
-  if (/보류|추가 검토|대기/.test(text)) return "보류";
-  if (/추천|진행/.test(text) && !/조건/.test(text)) return "추천";
-  return "조건부 추천";
+  if (!text.trim()) return null;
+  if (/비추천|중단|하지 않는|진행하지|철회/.test(text)) return "비추천";
+  if (/보류|추가 검토|대기|판단 유보|결정 유보/.test(text)) return "보류";
+  if (/(조건부|파일럿|시범|작게|제한적|단계적|검증)/.test(text) && /(추천|진행|실행|도입|검토)/.test(text)) {
+    return "조건부 추천";
+  }
+  if (/(추천|진행|실행|도입)/.test(text) && !/(조건|파일럿|시범|작게|검증|보류|추가)/.test(text)) {
+    return "추천";
+  }
+
+  return null;
 }
 
 function normalizeList(value: unknown, fallback: string[]) {

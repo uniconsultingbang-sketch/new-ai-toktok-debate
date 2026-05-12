@@ -465,10 +465,16 @@ function normalizeRecommendation(value: string) {
     return value;
   }
 
-  if (/비추천|중단/.test(value)) return "비추천";
-  if (/보류|추가 검토/.test(value)) return "보류";
-  if (/진행|추천/.test(value) && !/조건/.test(value)) return "추천";
-  return "조건부 추천";
+  if (/비추천|중단|하지 않는|진행하지|철회/.test(value)) return "비추천";
+  if (/보류|추가 검토|대기|판단 유보|결정 유보/.test(value)) return "보류";
+  if (/(조건부|파일럿|시범|작게|제한적|단계적|검증)/.test(value) && /(추천|진행|실행|도입|검토)/.test(value)) {
+    return "조건부 추천";
+  }
+  if (/(추천|진행|실행|도입)/.test(value) && !/(조건|파일럿|시범|작게|검증|보류|추가)/.test(value)) {
+    return "추천";
+  }
+
+  return "보류";
 }
 
 function isOwnerColumnError(error: unknown) {
