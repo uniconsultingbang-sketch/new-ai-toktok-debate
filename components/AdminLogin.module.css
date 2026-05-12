@@ -1,0 +1,354 @@
+.page {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f7faff 0%, #f3f6fb 100%);
+  color: #0f172a;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  padding: 48px 20px 70px;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(246deg, rgba(221, 232, 252, 0.62) 0%, rgba(221, 232, 252, 0) 38%);
+  pointer-events: none;
+}
+
+.leftCurve,
+.rightCurve {
+  position: absolute;
+  pointer-events: none;
+}
+
+.leftCurve {
+  left: -210px;
+  bottom: -300px;
+  width: 620px;
+  height: 560px;
+  border-radius: 54% 46% 0 0;
+  background: linear-gradient(45deg, rgba(220, 232, 250, 0.58), rgba(245, 249, 255, 0.12));
+}
+
+.rightCurve {
+  right: -230px;
+  top: 130px;
+  width: 660px;
+  height: 740px;
+  border-radius: 55% 0 0 45%;
+  background: linear-gradient(135deg, rgba(211, 226, 250, 0.74), rgba(244, 248, 255, 0.08));
+}
+
+.leftDots,
+.rightDots {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  opacity: 0.56;
+  background-image: radial-gradient(circle, #b8cef5 2.5px, transparent 2.8px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+
+.leftDots {
+  left: 13.6%;
+  top: 36.5%;
+}
+
+.rightDots {
+  right: 8.5%;
+  bottom: 13%;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 586px);
+  border: 1px solid rgba(219, 227, 239, 0.78);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 30px 80px rgba(42, 62, 101, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  padding: 84px 72px 78px;
+  text-align: center;
+}
+
+.logo {
+  display: inline-flex;
+  width: 82px;
+  height: 82px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3a78ff 0%, #185bdc 100%);
+  color: #ffffff;
+  font-size: 44px;
+  font-weight: 750;
+  line-height: 1;
+  box-shadow:
+    0 18px 30px rgba(42, 111, 243, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.card h1 {
+  margin: 22px 0 0;
+  color: #0b132b;
+  font-size: 37px;
+  font-weight: 760;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  margin: 13px 0 0;
+  color: #64708a;
+  font-size: 21px;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.divider {
+  height: 1px;
+  margin: 31px 0 28px;
+  background: linear-gradient(90deg, transparent 0%, #d9e1ee 12%, #d9e1ee 88%, transparent 100%);
+}
+
+.description {
+  margin: 0 0 28px;
+  color: #4d5a73;
+  font-size: 17px;
+  font-weight: 450;
+  line-height: 1.55;
+}
+
+.form {
+  display: grid;
+  gap: 26px;
+  text-align: left;
+}
+
+.form label {
+  display: grid;
+  gap: 10px;
+}
+
+.form label > span {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 690;
+  line-height: 1.3;
+}
+
+.inputWrap {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 58px;
+  border: 1px solid #d5ddea;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 17px;
+  color: #7b8aa3;
+  box-shadow: 0 1px 2px rgba(22, 33, 58, 0.03);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.inputWrap:focus-within {
+  border-color: #74a5ff;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(52, 119, 246, 0.12),
+    0 10px 24px rgba(31, 72, 132, 0.07);
+}
+
+.inputWrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #101827;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 420;
+  line-height: 1.4;
+}
+
+.inputWrap input::placeholder {
+  color: #8b98ad;
+  opacity: 1;
+}
+
+.visibilityButton {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #7b8aa3;
+  cursor: pointer;
+}
+
+.visibilityButton:hover {
+  background: #f0f5ff;
+  color: #2563eb;
+}
+
+.submitButton {
+  display: inline-flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2f7bff 0%, #246af0 100%);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  box-shadow:
+    0 15px 30px rgba(40, 111, 239, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
+}
+
+.submitButton:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 36px rgba(40, 111, 239, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.submitButton:disabled {
+  cursor: progress;
+  opacity: 0.72;
+  transform: none;
+}
+
+.error {
+  margin: -6px 0 0;
+  border: 1px solid #ffd3d3;
+  border-radius: 8px;
+  background: #fff5f5;
+  padding: 11px 13px;
+  color: #c53232;
+  font-size: 14px;
+  font-weight: 520;
+  line-height: 1.45;
+}
+
+.footer {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  right: 20px;
+  bottom: 36px;
+  margin: 0;
+  color: #6d7a92;
+  font-size: 15px;
+  font-weight: 420;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .page {
+    align-items: center;
+    padding: 28px 16px 58px;
+  }
+
+  .card {
+    padding: 48px 28px 42px;
+  }
+
+  .logo {
+    width: 68px;
+    height: 68px;
+    font-size: 36px;
+  }
+
+  .card h1 {
+    font-size: 31px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+  }
+
+  .leftDots {
+    left: -30px;
+    top: 18%;
+  }
+
+  .rightDots {
+    right: -42px;
+    bottom: 10%;
+  }
+
+  .leftCurve {
+    left: -330px;
+    bottom: -360px;
+  }
+
+  .rightCurve {
+    right: -430px;
+    top: 110px;
+  }
+}
+
+@media (max-height: 780px) and (min-width: 721px) {
+  .page {
+    padding-top: 26px;
+    padding-bottom: 54px;
+  }
+
+  .card {
+    padding: 48px 72px 44px;
+  }
+
+  .logo {
+    width: 68px;
+    height: 68px;
+    font-size: 36px;
+  }
+
+  .card h1 {
+    margin-top: 18px;
+    font-size: 33px;
+  }
+
+  .subtitle {
+    margin-top: 8px;
+    font-size: 18px;
+  }
+
+  .divider {
+    margin: 24px 0 22px;
+  }
+
+  .form {
+    gap: 19px;
+  }
+}

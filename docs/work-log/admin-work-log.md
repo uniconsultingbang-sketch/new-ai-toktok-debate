@@ -1,5 +1,36 @@
 # 어드민 작업 로그
 
+## 2026-05-13 - 어드민 로그인 화면 고도화
+
+### 수정한 파일
+- `components/LoginForm.tsx`
+- `components/AdminLogin.module.css`
+- `docs/work-log/admin-work-log.md`
+
+### 구현한 기능
+- `/login?next=/admin`일 때만 어드민 전용 로그인 화면이 표시되도록 분기했습니다.
+- 일반 `/login` 화면은 기존 사용자 로그인 화면을 유지했습니다.
+- 첨부된 역설계 가이드 기준으로 중앙 카드형 SaaS 관리자 로그인 화면을 구현했습니다.
+  - 화이트 기반 배경
+  - 블루 포인트 로고와 버튼
+  - 얇은 보더
+  - 부드러운 여백
+  - Pretendard 기반 타이포그래피
+  - 아이디/비밀번호 입력 아이콘
+  - 비밀번호 보기/숨기기 버튼
+  - 하단 저작권 문구
+
+### 테스트 결과
+- `npm.cmd run build` 성공.
+- `npx.cmd tsc --noEmit` 성공.
+- 로컬 `http://127.0.0.1:3043/login?next=%2Fadmin`에서 `Admin Console`, `관리자 계정으로 로그인하세요.`, 저작권 문구 표시 확인.
+- 로컬 `http://127.0.0.1:3043/login`에서는 기존 사용자용 로그인 화면이 유지되는 것 확인.
+
+### 남은 이슈
+- Vercel 배포 후 `https://new-ai-toktok-debate.vercel.app/login?next=%2Fadmin`에서 최종 화면 확인이 필요합니다.
+
+---
+
 ## 2026-05-12 - 어드민 검수 및 배포 준비
 
 ### 확인한 항목

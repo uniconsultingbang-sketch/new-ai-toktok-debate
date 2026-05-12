@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, LogIn } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, LogIn, UserRound } from "lucide-react";
+import styles from "./AdminLogin.module.css";
 
 export function LoginForm() {
   const router = useRouter();
@@ -11,6 +12,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const nextPath = searchParams.get("next") || "/";
+  const isAdminLogin = nextPath === "/admin" || nextPath.startsWith("/admin?");
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,12 +40,78 @@ export function LoginForm() {
         return;
       }
 
-      router.replace(searchParams.get("next") || "/");
+      router.replace(nextPath);
       router.refresh();
     } catch {
       setError("로그인 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
       setIsLoading(false);
     }
+  }
+
+  if (isAdminLogin) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.leftDots} aria-hidden="true" />
+        <div className={styles.rightDots} aria-hidden="true" />
+        <div className={styles.leftCurve} aria-hidden="true" />
+        <div className={styles.rightCurve} aria-hidden="true" />
+
+        <section className={styles.card} aria-labelledby="admin-login-title">
+          <div className={styles.logo} aria-hidden="true">
+            A
+          </div>
+          <h1 id="admin-login-title">AI Talk Talk</h1>
+          <p className={styles.subtitle}>Admin Console</p>
+          <div className={styles.divider} />
+          <p className={styles.description}>관리자 계정으로 로그인하세요.</p>
+
+          <form onSubmit={submitLogin} className={styles.form}>
+            <label>
+              <span>아이디</span>
+              <div className={styles.inputWrap}>
+                <UserRound size={20} aria-hidden="true" />
+                <input
+                  value={id}
+                  onChange={(event) => setId(event.target.value)}
+                  autoComplete="username"
+                  placeholder="아이디를 입력하세요."
+                />
+              </div>
+            </label>
+
+            <label>
+              <span>비밀번호</span>
+              <div className={styles.inputWrap}>
+                <LockKeyhole size={19} aria-hidden="true" />
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="비밀번호를 입력하세요."
+                />
+                <button
+                  className={styles.visibilityButton}
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                >
+                  {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
+            </label>
+
+            {error ? <p className={styles.error}>{error}</p> : null}
+
+            <button className={styles.submitButton} type="submit" disabled={isLoading}>
+              {isLoading ? "확인 중..." : "로그인"}
+            </button>
+          </form>
+        </section>
+
+        <p className={styles.footer}>© 2025 AI Talk Talk. All rights reserved.</p>
+      </main>
+    );
   }
 
   return (
