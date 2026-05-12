@@ -57,6 +57,7 @@ export type DebateEvent =
 
 export type DecisionRecord = {
   id: string;
+  ownerId?: string;
   title: string;
   content: string;
   options: string;
@@ -79,7 +80,7 @@ const STORAGE_KEY = "newAiToktokProfessorDebates";
 const LEGACY_STORAGE_KEY = "newAiToktokProfessorDebatesLegacy";
 
 const statusLabels: Record<DecisionStatus, string> = {
-  running: "진행중",
+  running: "토론중",
   paused: "중단됨",
   completed: "완료",
   failed: "오류",
@@ -101,130 +102,144 @@ export function createDecisionId() {
   return `decision-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function loadDecisions(): DecisionRecord[] {
+export function loadDecisions(ownerId?: string | null): DecisionRecord[] {
   if (typeof window === "undefined") {
     return [];
   }
 
-  const primary = readStorage(STORAGE_KEY);
+  const owner = normalizeOwnerId(ownerId);
+  const primary = readStorage(storageKey(owner), owner);
+
+  if (owner) {
+    return primary;
+  }
+
   if (primary.length) {
     return primary;
   }
 
-  const legacy = readStorage(LEGACY_STORAGE_KEY);
+  const legacy = readStorage(legacyStorageKey(null), null);
   if (legacy.length) {
-    writeStorage(legacy);
+    writeStorage(legacy, null);
   }
 
   return legacy;
 }
 
-export async function loadDecisionsAsync(): Promise<DecisionRecord[]> {
-  const localDecisions = loadDecisions();
+export async function loadDecisionsAsync(ownerId?: string | null): Promise<DecisionRecord[]> {
+  const owner = normalizeOwnerId(ownerId);
+  const localDecisions = loadDecisions(owner);
 
   if (!supabase) {
     return localDecisions;
   }
 
-  const { data, error } = await supabase
-    .from("decision_records")
-    .select("payload")
-    .order("updated_at", { ascending: false });
-
-  if (error || !data) {
-    return localDecisions;
-  }
-
-  const remoteDecisions = data
-    .map((row) => row.payload as DecisionRecord | null)
-    .filter((value): value is DecisionRecord => Boolean(value))
-    .map(normalizeDecision);
-
-  const merged = mergeDecisions(remoteDecisions, localDecisions);
-  writeStorage(merged);
+  const remoteDecisions = await loadRemoteDecisions(owner);
+  const merged = mergeDecisions(remoteDecisions, localDecisions, owner);
+  writeStorage(merged, owner);
   return merged;
 }
 
-export function getDecision(id: string) {
-  return loadDecisions().find((decision) => decision.id === id) ?? null;
+export function getDecision(id: string, ownerId?: string | null) {
+  const owner = normalizeOwnerId(ownerId);
+  return loadDecisions(owner).find((decision) => decision.id === id && belongsToOwner(decision, owner)) ?? null;
 }
 
-export async function getDecisionAsync(id: string) {
-  const localDecision = getDecision(id);
+export async function getDecisionAsync(id: string, ownerId?: string | null) {
+  const owner = normalizeOwnerId(ownerId);
+  const localDecision = getDecision(id, owner);
 
   if (localDecision || !supabase) {
     return localDecision;
   }
 
-  const { data, error } = await supabase
-    .from("decision_records")
-    .select("payload")
-    .eq("id", id)
-    .maybeSingle();
+  const remoteDecision = await loadRemoteDecision(id, owner);
 
-  if (error || !data?.payload) {
+  if (!remoteDecision) {
     return null;
   }
 
-  const decision = normalizeDecision(data.payload as DecisionRecord);
-  saveDecision(decision);
-  return decision;
+  saveDecision(remoteDecision, owner);
+  return remoteDecision;
 }
 
-export function saveDecision(decision: DecisionRecord) {
+export function saveDecision(decision: DecisionRecord, ownerId?: string | null) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const decisions = loadDecisions();
-  const index = decisions.findIndex((item) => item.id === decision.id);
+  const owner = normalizeOwnerId(ownerId ?? decision.ownerId);
+  const normalized = normalizeDecision(decision, owner);
+  const decisions = loadDecisions(owner);
+  const index = decisions.findIndex((item) => item.id === normalized.id);
   const next =
     index >= 0
-      ? decisions.map((item, itemIndex) => (itemIndex === index ? normalizeDecision(decision) : item))
-      : [normalizeDecision(decision), ...decisions];
+      ? decisions.map((item, itemIndex) => (itemIndex === index ? normalized : item))
+      : [normalized, ...decisions];
 
-  writeStorage(next);
+  writeStorage(next, owner);
 }
 
-export async function saveDecisionAsync(decision: DecisionRecord) {
-  saveDecision(decision);
+export async function saveDecisionAsync(decision: DecisionRecord, ownerId?: string | null) {
+  const owner = normalizeOwnerId(ownerId ?? decision.ownerId);
+  const normalized = normalizeDecision(decision, owner);
+  saveDecision(normalized, owner);
 
   if (!supabase) {
     return;
   }
 
-  const normalized = normalizeDecision(decision);
+  const payload = {
+    id: normalized.id,
+    owner_id: normalized.ownerId ?? null,
+    title: normalized.title,
+    status: normalized.status,
+    created_at: normalized.createdAt,
+    updated_at: normalized.updatedAt,
+    payload: normalized,
+  };
 
-  await supabase.from("decision_records").upsert(
-    {
-      id: normalized.id,
-      title: normalized.title,
-      status: normalized.status,
-      created_at: normalized.createdAt,
-      updated_at: normalized.updatedAt,
-      payload: normalized,
-    },
-    { onConflict: "id" },
-  );
+  const { error } = await supabase.from("decision_records").upsert(payload, { onConflict: "id" });
+
+  if (error && isOwnerColumnError(error)) {
+    const { owner_id: _ownerId, ...fallbackPayload } = payload;
+    await supabase.from("decision_records").upsert(fallbackPayload, { onConflict: "id" });
+  }
 }
 
-export function deleteDecision(id: string) {
+export function deleteDecision(id: string, ownerId?: string | null) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const next = loadDecisions().filter((decision) => decision.id !== id);
-  writeStorage(next);
+  const owner = normalizeOwnerId(ownerId);
+  const next = loadDecisions(owner).filter((decision) => decision.id !== id);
+  writeStorage(next, owner);
 }
 
-export async function deleteDecisionAsync(id: string) {
-  deleteDecision(id);
+export async function deleteDecisionAsync(id: string, ownerId?: string | null) {
+  const owner = normalizeOwnerId(ownerId);
+  deleteDecision(id, owner);
 
   if (!supabase) {
     return;
   }
 
-  await supabase.from("decision_records").delete().eq("id", id);
+  if (!owner) {
+    await supabase.from("decision_records").delete().eq("id", id);
+    return;
+  }
+
+  const { error } = await supabase.from("decision_records").delete().eq("id", id).eq("owner_id", owner);
+
+  if (!error) {
+    return;
+  }
+
+  const remoteDecision = await loadRemoteDecision(id, owner);
+  if (remoteDecision?.ownerId === owner) {
+    await supabase.from("decision_records").delete().eq("id", id);
+  }
 }
 
 export function formatDecisionDate(value: string) {
@@ -250,41 +265,142 @@ export function getTopicLabel(topicType?: TopicType | string) {
   return topicType && topicType in topicLabels ? topicLabels[topicType as TopicType] : "일반 의사결정";
 }
 
-function readStorage(key: string): DecisionRecord[] {
+async function loadRemoteDecisions(ownerId: string | null) {
+  if (!supabase) {
+    return [];
+  }
+
+  let query = supabase.from("decision_records").select("payload").order("updated_at", { ascending: false });
+
+  if (ownerId) {
+    query = query.eq("owner_id", ownerId);
+  }
+
+  const { data, error } = await query;
+
+  if (!error && data) {
+    const primary = normalizeRemoteRows(data, ownerId);
+
+    if (!ownerId) {
+      return primary;
+    }
+
+    const fallback = await supabase.from("decision_records").select("payload").order("updated_at", { ascending: false });
+
+    if (fallback.error || !fallback.data) {
+      return primary;
+    }
+
+    return mergeDecisions(primary, normalizeRemoteRows(fallback.data, ownerId), ownerId);
+  }
+
+  if (!ownerId) {
+    return [];
+  }
+
+  const fallback = await supabase.from("decision_records").select("payload").order("updated_at", { ascending: false });
+
+  if (fallback.error || !fallback.data) {
+    return [];
+  }
+
+  return normalizeRemoteRows(fallback.data, ownerId);
+}
+
+async function loadRemoteDecision(id: string, ownerId: string | null) {
+  if (!supabase) {
+    return null;
+  }
+
+  let query = supabase.from("decision_records").select("payload").eq("id", id);
+
+  if (ownerId) {
+    query = query.eq("owner_id", ownerId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (!error && data?.payload) {
+    const decision = normalizeDecision(data.payload as DecisionRecord, undefined);
+    return belongsToOwner(decision, ownerId) ? decision : null;
+  }
+
+  if (!ownerId) {
+    return null;
+  }
+
+  const fallback = await supabase.from("decision_records").select("payload").eq("id", id).maybeSingle();
+
+  if (fallback.error || !fallback.data?.payload) {
+    return null;
+  }
+
+  const decision = normalizeDecision(fallback.data.payload as DecisionRecord, undefined);
+  return belongsToOwner(decision, ownerId) ? decision : null;
+}
+
+function normalizeRemoteRows(rows: Array<{ payload: unknown }>, ownerId: string | null) {
+  return rows
+    .map((row) => normalizeDecision(row.payload as DecisionRecord, undefined))
+    .filter((decision) => belongsToOwner(decision, ownerId));
+}
+
+function readStorage(key: string, ownerId: string | null): DecisionRecord[] {
   try {
     const raw = window.localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.map(normalizeDecision) : [];
+    return Array.isArray(parsed)
+      ? parsed.map((value) => normalizeDecision(value as DecisionRecord, ownerId)).filter((value) => belongsToOwner(value, ownerId))
+      : [];
   } catch {
     return [];
   }
 }
 
-function writeStorage(decisions: DecisionRecord[]) {
-  const value = JSON.stringify(decisions.map(normalizeDecision));
-  window.localStorage.setItem(STORAGE_KEY, value);
-  window.localStorage.setItem(LEGACY_STORAGE_KEY, value);
+function writeStorage(decisions: DecisionRecord[], ownerId: string | null) {
+  const normalized = decisions
+    .map((decision) => normalizeDecision(decision, ownerId))
+    .filter((decision) => belongsToOwner(decision, ownerId));
+  const value = JSON.stringify(normalized);
+  window.localStorage.setItem(storageKey(ownerId), value);
+
+  if (!ownerId) {
+    window.localStorage.setItem(LEGACY_STORAGE_KEY, value);
+  }
 }
 
-function mergeDecisions(primary: DecisionRecord[], secondary: DecisionRecord[]) {
+function storageKey(ownerId: string | null) {
+  return ownerId ? `${STORAGE_KEY}:${ownerId}` : STORAGE_KEY;
+}
+
+function legacyStorageKey(ownerId: string | null) {
+  return ownerId ? `${LEGACY_STORAGE_KEY}:${ownerId}` : LEGACY_STORAGE_KEY;
+}
+
+function mergeDecisions(primary: DecisionRecord[], secondary: DecisionRecord[], ownerId: string | null) {
   const seen = new Set<string>();
   const merged: DecisionRecord[] = [];
 
   for (const decision of [...primary, ...secondary]) {
-    if (seen.has(decision.id)) {
+    const normalized = normalizeDecision(decision, ownerId);
+
+    if (seen.has(normalized.id) || !belongsToOwner(normalized, ownerId)) {
       continue;
     }
 
-    seen.add(decision.id);
-    merged.push(normalizeDecision(decision));
+    seen.add(normalized.id);
+    merged.push(normalized);
   }
 
   return merged.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-function normalizeDecision(value: DecisionRecord): DecisionRecord {
+function normalizeDecision(value: DecisionRecord, ownerId?: string | null): DecisionRecord {
+  const owner = normalizeOwnerId(ownerId ?? value.ownerId);
+
   return {
     ...value,
+    ownerId: owner ?? undefined,
     options: value.options ?? "",
     risks: value.risks ?? "",
     focusAreas: value.focusAreas?.length ? value.focusAreas : ["수요", "근거", "리스크", "실행"],
@@ -297,6 +413,19 @@ function normalizeDecision(value: DecisionRecord): DecisionRecord {
     finalReport: normalizeFinalReport(value.finalReport),
     error: value.error ?? null,
   };
+}
+
+function belongsToOwner(decision: DecisionRecord, ownerId: string | null) {
+  if (!ownerId) {
+    return true;
+  }
+
+  return normalizeOwnerId(decision.ownerId) === ownerId;
+}
+
+function normalizeOwnerId(value: unknown) {
+  const owner = typeof value === "string" ? value.trim() : "";
+  return owner || null;
 }
 
 function normalizeTopic(value: unknown): TopicType | undefined {
@@ -340,6 +469,11 @@ function normalizeRecommendation(value: string) {
   if (/보류|추가 검토/.test(value)) return "보류";
   if (/진행|추천/.test(value) && !/조건/.test(value)) return "추천";
   return "조건부 추천";
+}
+
+function isOwnerColumnError(error: unknown) {
+  const message = String((error as { message?: unknown })?.message ?? "").toLowerCase();
+  return message.includes("owner_id") || message.includes("column");
 }
 
 function clampRotations(value: unknown) {

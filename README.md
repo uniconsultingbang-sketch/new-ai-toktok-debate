@@ -58,6 +58,7 @@ Copy `.env.example` to `.env.local` and fill in the values.
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SECRET_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GOOGLE_AI_API_KEY=
@@ -83,6 +84,8 @@ APP_LOGIN_USERS=user1:password1:Name One,user2:password2:Name Two,user3:password
 
 - Set `AUTH_SECRET` to a long random value in Vercel.
 - Login sessions last 7 days.
+- Each account sees only its own debate archive.
+- If the same ID logs in on a new device, the older device is signed out after the Supabase session table is created.
 - Changing a password means editing `APP_LOGIN_USERS` in Vercel and redeploying.
 
 ## Supabase Setup
@@ -91,6 +94,7 @@ APP_LOGIN_USERS=user1:password1:Name One,user2:password2:Name Two,user3:password
 2. Go to SQL Editor.
 3. Run `docs/supabase-schema.sql`.
 4. Copy project URL and anon key into `.env.local`.
+5. For an existing database, run `docs/supabase-v0.5.0-owner-session.sql` once to add account-owned archives and session locking.
 
 ## Local Development
 

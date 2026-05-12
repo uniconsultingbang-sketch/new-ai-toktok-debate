@@ -45,10 +45,22 @@ create table if not exists public.final_reports (
 
 create table if not exists public.decision_records (
   id uuid primary key,
+  owner_id text null,
   title text not null,
   status text not null default 'running',
   payload jsonb not null,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.decision_records
+add column if not exists owner_id text null;
+
+create table if not exists public.login_sessions (
+  user_id text primary key,
+  user_name text not null,
+  session_id text not null,
+  expires_at timestamptz not null,
   updated_at timestamptz not null default now()
 );
 
@@ -71,6 +83,7 @@ alter table public.decisions enable row level security;
 alter table public.debate_rounds enable row level security;
 alter table public.final_reports enable row level security;
 alter table public.decision_records enable row level security;
+alter table public.login_sessions enable row level security;
 
 create policy "Demo read decisions"
 on public.decisions
@@ -129,6 +142,32 @@ on public.decision_records
 for delete
 using (true);
 
+drop policy if exists "Demo read login sessions" on public.login_sessions;
+drop policy if exists "Demo insert login sessions" on public.login_sessions;
+drop policy if exists "Demo update login sessions" on public.login_sessions;
+drop policy if exists "Demo delete login sessions" on public.login_sessions;
+
+create policy "Demo read login sessions"
+on public.login_sessions
+for select
+using (true);
+
+create policy "Demo insert login sessions"
+on public.login_sessions
+for insert
+with check (true);
+
+create policy "Demo update login sessions"
+on public.login_sessions
+for update
+using (true)
+with check (true);
+
+create policy "Demo delete login sessions"
+on public.login_sessions
+for delete
+using (true);
+
 create index if not exists decisions_created_at_idx
 on public.decisions(created_at desc);
 
@@ -140,4 +179,7 @@ on public.final_reports(decision_id);
 
 create index if not exists decision_records_updated_at_idx
 on public.decision_records(updated_at desc);
+
+create index if not exists decision_records_owner_updated_at_idx
+on public.decision_records(owner_id, updated_at desc);
 

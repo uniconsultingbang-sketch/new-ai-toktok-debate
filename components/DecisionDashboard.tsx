@@ -57,20 +57,25 @@ export function DecisionDashboard() {
   useEffect(() => {
     let isMounted = true;
 
-    setDecisions(loadDecisions());
-    void loadDecisionsAsync().then((items) => {
-      if (isMounted) {
-        setDecisions(items);
-      }
-    });
     void fetch("/api/auth/me")
       .then((response) => response.json())
       .then((data: AuthMe) => {
         if (isMounted) {
           setAuth(data);
+          const ownerId = getAuthOwnerId(data);
+          setDecisions(loadDecisions(ownerId));
+          void loadDecisionsAsync(ownerId).then((items) => {
+            if (isMounted) {
+              setDecisions(items);
+            }
+          });
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (isMounted) {
+          setDecisions(loadDecisions());
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -88,9 +93,20 @@ export function DecisionDashboard() {
 
     const inputContent = question.trim();
     const inputTitle = makeTitle(inputContent);
+    const ownerId = getAuthOwnerId(auth);
+
+    if (!auth) {
+      setFormError("로그인 상태를 확인하는 중입니다. 잠시 후 다시 눌러 주세요.");
+      return;
+    }
 
     if (!inputContent || !inputTitle) {
       setFormError("토론할 안건을 1자 이상 입력해 주세요.");
+      return;
+    }
+
+    if (auth?.configured && !ownerId) {
+      setFormError("로그인 상태를 확인한 뒤 다시 시도해 주세요.");
       return;
     }
 
@@ -100,6 +116,7 @@ export function DecisionDashboard() {
     const now = new Date().toISOString();
     const decision: DecisionRecord = {
       id: createDecisionId(),
+      ownerId: ownerId ?? undefined,
       title: inputTitle,
       content: inputContent,
       options: "",
@@ -118,7 +135,7 @@ export function DecisionDashboard() {
     };
 
     try {
-      await saveDecisionAsync(decision);
+      await saveDecisionAsync(decision, ownerId);
       window.location.assign(`/decisions/${decision.id}`);
     } catch {
       setIsStarting(false);
@@ -137,9 +154,10 @@ export function DecisionDashboard() {
       return;
     }
 
-    deleteDecision(id);
-    void deleteDecisionAsync(id);
-    setDecisions(loadDecisions());
+    const ownerId = getAuthOwnerId(auth);
+    deleteDecision(id, ownerId);
+    void deleteDecisionAsync(id, ownerId);
+    setDecisions(loadDecisions(ownerId));
   }
 
   function toggleExpandedItem(id: string) {
@@ -299,4 +317,12 @@ function makeTitle(value: string) {
   }
 
   return normalized.length > 42 ? `${normalized.slice(0, 42)}...` : normalized;
+}
+
+function getAuthOwnerId(auth: AuthMe | null) {
+  if (!auth?.configured) {
+    return null;
+  }
+
+  return auth.user?.id ?? null;
 }

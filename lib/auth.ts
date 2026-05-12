@@ -9,7 +9,13 @@ export type LoginUser = {
 export type AuthSession = {
   id: string;
   name: string;
+  sessionId: string;
   expiresAt: number;
+};
+
+type SupabaseRestConfig = {
+  url: string;
+  key: string;
 };
 
 const sessionDays = 7;
@@ -60,6 +66,7 @@ export function createSession(user: LoginUser): AuthSession {
   return {
     id: user.id,
     name: user.name,
+    sessionId: createSessionId(),
     expiresAt: Date.now() + getSessionMaxAge() * 1000,
   };
 }
@@ -83,15 +90,133 @@ export async function verifySessionToken(token: string | undefined | null): Prom
   }
 
   try {
-    const session = JSON.parse(base64UrlDecode(payload)) as AuthSession;
+    const session = JSON.parse(base64UrlDecode(payload)) as Partial<AuthSession>;
 
-    if (!session.id || !session.name || !session.expiresAt || session.expiresAt < Date.now()) {
+    if (
+      !session.id ||
+      !session.name ||
+      !session.sessionId ||
+      !session.expiresAt ||
+      session.expiresAt < Date.now()
+    ) {
       return null;
     }
 
-    return session;
+    return {
+      id: session.id,
+      name: session.name,
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt,
+    };
   } catch {
     return null;
+  }
+}
+
+export async function verifyActiveSessionToken(token: string | undefined | null): Promise<AuthSession | null> {
+  const session = await verifySessionToken(token);
+
+  if (!session) {
+    return null;
+  }
+
+  const isCurrent = await isCurrentLoginSession(session);
+  return isCurrent ? session : null;
+}
+
+export async function registerLoginSession(session: AuthSession) {
+  const config = getSupabaseRestConfig();
+
+  if (!config) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${config.url}/rest/v1/login_sessions?on_conflict=user_id`, {
+      method: "POST",
+      headers: {
+        apikey: config.key,
+        authorization: `Bearer ${config.key}`,
+        "content-type": "application/json",
+        prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({
+        user_id: session.id,
+        user_name: session.name,
+        session_id: session.sessionId,
+        expires_at: new Date(session.expiresAt).toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearLoginSession(session: AuthSession | null) {
+  const config = getSupabaseRestConfig();
+
+  if (!config || !session) {
+    return;
+  }
+
+  try {
+    await fetch(
+      `${config.url}/rest/v1/login_sessions?user_id=eq.${encodeURIComponent(session.id)}&session_id=eq.${encodeURIComponent(
+        session.sessionId,
+      )}`,
+      {
+        method: "DELETE",
+        headers: {
+          apikey: config.key,
+          authorization: `Bearer ${config.key}`,
+          prefer: "return=minimal",
+        },
+      },
+    );
+  } catch {
+    // Logout should still clear the browser cookie even if the server store is unavailable.
+  }
+}
+
+async function isCurrentLoginSession(session: AuthSession) {
+  const config = getSupabaseRestConfig();
+
+  if (!config) {
+    return true;
+  }
+
+  try {
+    const response = await fetch(
+      `${config.url}/rest/v1/login_sessions?user_id=eq.${encodeURIComponent(
+        session.id,
+      )}&select=session_id,expires_at&limit=1`,
+      {
+        headers: {
+          apikey: config.key,
+          authorization: `Bearer ${config.key}`,
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return true;
+    }
+
+    const rows = (await response.json()) as Array<{ session_id?: string; expires_at?: string }>;
+    const active = rows[0];
+
+    if (!active) {
+      return false;
+    }
+
+    const expiresAt = active.expires_at ? new Date(active.expires_at).getTime() : 0;
+    return active.session_id === session.sessionId && expiresAt >= Date.now();
+  } catch {
+    return true;
   }
 }
 
@@ -109,6 +234,28 @@ async function signValue(value: string) {
 
 function getAuthSecret() {
   return process.env.AUTH_SECRET || "local-development-auth-secret";
+}
+
+function getSupabaseRestConfig(): SupabaseRestConfig | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  const key =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    return null;
+  }
+
+  return { url, key };
+}
+
+function createSessionId() {
+  if (typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function base64UrlEncode(value: string) {

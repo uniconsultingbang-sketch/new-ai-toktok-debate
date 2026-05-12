@@ -35,6 +35,12 @@ type IncomingEvent =
 
 type RevealEvent = Exclude<IncomingEvent, { type: "done" }>;
 
+type AuthMe = {
+  configured: boolean;
+  authenticated: boolean;
+  user: { id: string; name: string } | null;
+};
+
 const statusText: Record<DecisionRecord["status"], string> = {
   running: "토론중",
   paused: "중단됨",
@@ -98,6 +104,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   const isProcessingRef = useRef(false);
   const fastForwardRef = useRef(false);
   const decisionRef = useRef<DecisionRecord | null>(null);
+  const ownerIdRef = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const finalRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,7 +117,6 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   useEffect(() => {
     window.history.scrollRestoration = "manual";
     let isMounted = true;
-    const saved = getDecision(decisionId);
 
     function showDecision(nextDecision: DecisionRecord) {
       if (!isMounted) {
@@ -127,10 +133,34 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       }
     }
 
-    if (saved) {
-      showDecision(saved);
-    } else {
-      void getDecisionAsync(decisionId).then((remoteDecision) => {
+    async function loadDecisionForCurrentUser() {
+      let auth: AuthMe = { configured: false, authenticated: true, user: null };
+
+      try {
+        auth = (await fetch("/api/auth/me").then((response) => response.json())) as AuthMe;
+      } catch {
+        auth = { configured: false, authenticated: true, user: null };
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (auth.configured && !auth.authenticated) {
+        window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+
+      const ownerId = getAuthOwnerId(auth);
+      ownerIdRef.current = ownerId;
+      const saved = getDecision(decisionId, ownerId);
+
+      if (saved) {
+        showDecision(saved);
+        return;
+      }
+
+      void getDecisionAsync(decisionId, ownerId).then((remoteDecision) => {
         if (!isMounted) {
           return;
         }
@@ -143,6 +173,8 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
         setNotFound(true);
       });
     }
+
+    void loadDecisionForCurrentUser();
 
     return () => {
       isMounted = false;
@@ -191,8 +223,10 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
     setIsStreaming(true);
 
     const now = new Date().toISOString();
+    const ownerId = getDecisionOwnerId(baseDecision, ownerIdRef.current);
     const initial: DecisionRecord = {
       ...baseDecision,
+      ownerId: ownerId ?? undefined,
       status: "running",
       updatedAt: now,
       events: restart ? [] : baseDecision.events,
@@ -205,7 +239,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
     };
 
     setDecision(initial);
-    void saveDecisionAsync(initial);
+    void saveDecisionAsync(initial, ownerId);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -365,7 +399,8 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       }
 
       const next = updater(current);
-      void saveDecisionAsync(next);
+      const ownerId = getDecisionOwnerId(next, ownerIdRef.current);
+      void saveDecisionAsync(next, ownerId);
       decisionRef.current = next;
       return next;
     });
@@ -399,8 +434,8 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
     return (
       <main className="prof-detail-page">
         <section className="prof-empty-card">
-          <h1>토론 기록을 찾지 못했습니다.</h1>
-          <p>홈에서 새 안건을 입력해 다시 시작해 주세요.</p>
+          <h1>접근할 수 없는 토론 기록입니다.</h1>
+          <p>현재 로그인한 계정의 기록이 아니거나 삭제된 토론입니다.</p>
           <button type="button" onClick={goHome}>홈으로</button>
         </section>
       </main>
@@ -806,6 +841,18 @@ function formatBubbleTime(value: string) {
     minute: "2-digit",
     hour12: false,
   }).format(date);
+}
+
+function getAuthOwnerId(auth: AuthMe) {
+  if (!auth.configured) {
+    return null;
+  }
+
+  return auth.user?.id ?? null;
+}
+
+function getDecisionOwnerId(decision: DecisionRecord, fallbackOwnerId: string | null) {
+  return decision.ownerId ?? fallbackOwnerId;
 }
 
 function sleep(ms: number) {

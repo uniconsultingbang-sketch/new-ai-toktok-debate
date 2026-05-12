@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME, isAuthConfigured, verifySessionToken } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, isAuthConfigured, verifyActiveSessionToken } from "@/lib/auth";
 
 const publicPrefixes = [
   "/_next",
@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = await verifySessionToken(request.cookies.get(AUTH_COOKIE_NAME)?.value);
+  const session = await verifyActiveSessionToken(request.cookies.get(AUTH_COOKIE_NAME)?.value);
 
   if (pathname === "/login") {
     if (session) {

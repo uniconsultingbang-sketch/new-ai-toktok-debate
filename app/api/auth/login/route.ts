@@ -5,6 +5,7 @@ import {
   createSessionToken,
   getLoginUsers,
   getSessionMaxAge,
+  registerLoginSession,
 } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -37,10 +38,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "아이디 또는 비밀번호가 맞지 않습니다." }, { status: 401 });
   }
 
-  const response = NextResponse.json({ ok: true, user: { id: user.id, name: user.name } });
+  const session = createSession(user);
+  const sessionLockEnabled = await registerLoginSession(session);
+  const response = NextResponse.json({
+    ok: true,
+    sessionLockEnabled,
+    user: { id: user.id, name: user.name },
+  });
+
   response.cookies.set({
     name: AUTH_COOKIE_NAME,
-    value: await createSessionToken(createSession(user)),
+    value: await createSessionToken(session),
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
