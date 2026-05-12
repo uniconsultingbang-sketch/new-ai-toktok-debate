@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-label="AI 톡톡 아이콘 후보">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-label="AI Talk Talk 아이콘 후보">
   <rect width="960" height="280" rx="28" fill="#fffdf8"/>
-  <text x="40" y="48" font-size="26" font-weight="700" font-family="Arial, sans-serif" fill="#20233e">AI 톡톡 아이콘 후보</text>
+  <text x="40" y="48" font-size="26" font-weight="700" font-family="Arial, sans-serif" fill="#20233e">AI Talk Talk 아이콘 후보</text>
   <g transform="translate(54 76)">
     <use href="#iconA"/>
     <text x="64" y="162" text-anchor="middle" font-size="16" font-weight="700" font-family="Arial, sans-serif" fill="#20233e">A 기본</text>

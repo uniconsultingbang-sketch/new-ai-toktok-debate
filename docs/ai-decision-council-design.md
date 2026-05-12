@@ -1,8 +1,8 @@
-# AI Decision Council 디자인 가이드
+# AI Talk Talk 디자인 참고 문서
 
 ## 1. 제품 톤
 
-AI Decision Council은 “AI 세 명이 가볍게 수다 떨며 서로 태클을 걸고, 마지막에 결론을 정리해주는 모바일 서비스”로 보이게 만든다. 기본 감성은 카카오톡/카카오뱅크처럼 귀엽고 부드럽게 잡는다.
+AI Talk Talk은 세 AI가 전문가 회의처럼 논리적으로 토론하고, 마지막에 결론을 정리해주는 모바일 우선 서비스입니다. 이 문서는 초기 디자인 참고용이며, 현재 서비스 톤은 가벼운 수다보다 전문가 회의형 토론을 우선합니다.
 
 피해야 할 느낌:
 
@@ -41,7 +41,7 @@ AI Decision Council은 “AI 세 명이 가볍게 수다 떨며 서로 태클을
 구조:
 
 1. Hero
-   - 좌측: `AI Decision Council`, `AI 3-Mind Council`, 설명문
+   - 좌측: `AI Talk Talk`, `3관점 논리 토론`, 설명문
    - 우측: Claude/GPT/Gemini가 테이블에 앉은 귀여운 AI 회의 일러스트
 2. 입력 카드
    - 심플/심층 pill 토글

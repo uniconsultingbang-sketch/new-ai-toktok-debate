@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "3관점 논리 토론",
-  description: "낙관, 비관, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 서비스",
+  title: "AI Talk Talk",
+  description: "낙관, 비관, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 AI Talk Talk 서비스",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "3관점 논리 토론",
+    title: "AI Talk Talk",
     statusBarStyle: "default",
   },
   icons: {

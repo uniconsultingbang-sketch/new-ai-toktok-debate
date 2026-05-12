@@ -1,4 +1,4 @@
-# AI 톡톡 / AI 3-Mind Council 서비스 구조서
+# AI Talk Talk 서비스 구조서
 
 ## 1. 서비스 목적
 

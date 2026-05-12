@@ -51,7 +51,7 @@ export function LoginForm() {
           <LockKeyhole className="size-7" />
         </div>
         <p className="prof-eyebrow">Private Test</p>
-        <h1>3관점 논리 토론 로그인</h1>
+        <h1>AI Talk Talk 로그인</h1>
         <p className="login-copy">지정된 3명만 사용하는 테스트 공간입니다. 받은 아이디와 비밀번호로 들어가 주세요.</p>
 
         <form onSubmit={submitLogin} className="login-form">

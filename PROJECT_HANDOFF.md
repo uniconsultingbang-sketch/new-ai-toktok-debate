@@ -1,23 +1,19 @@
-﻿# new AI 톡톡 토론 프로젝트 핸드오프
+# AI Talk Talk 프로젝트 핸드오프
 
 작성일: 2026-05-12
 
-이 문서는 다른 Codex 채팅방이 사장님용 심층 토론 프로젝트를 바로 이어받기 위한 기준 문서입니다.
+이 문서는 다른 Codex 채팅방이 AI Talk Talk 프로젝트를 바로 이어받기 위한 기준 문서입니다.
 
-최종 판단 로직은 `docs/handoff/09-final-recommendation-logic.md`에 별도로 기록했습니다.
+## 1. 프로젝트 기준
 
-## 1. 프로젝트 구분
+- 공식 서비스명: `AI Talk Talk`
+- 서비스 설명: 3관점 논리 토론 서비스
+- 프로젝트 위치: `C:\Users\unico\Documents\Codex\2026-05-07\new-ai-toktok-debate`
+- GitHub: `https://github.com/uniconsultingbang-sketch/new-ai-toktok-debate.git`
+- Vercel: `https://new-ai-toktok-debate.vercel.app/`
+- 현재 기준 버전: `v0.5.2`
 
-- 기존 AI 톡톡 개인/재미 버전:
-  - `C:\Users\unico\Documents\Codex\2026-05-07\new-chat`
-  - 방실장님과 지디가 계속 수정할 원래 프로젝트입니다.
-  - 이 새 채팅방에서는 건드리지 않습니다.
-
-- 사장님용 새 심층 토론 버전:
-  - `C:\Users\unico\Documents\Codex\2026-05-07\new-ai-toktok-debate`
-  - 현재 문서가 들어 있는 프로젝트입니다.
-  - 이름은 `new AI 톡톡 토론`입니다.
-  - 아직 배포하지 않았고, 로컬에서만 확인하는 상태입니다.
+중요: GitHub/Vercel/폴더 이름의 `new-ai-toktok-debate`는 기존 연결을 유지하기 위한 기술용 이름입니다. 사용자에게 보이는 이름과 문서의 공식 이름은 `AI Talk Talk`입니다.
 
 ## 2. 다음 채팅방 첫 메시지
 
@@ -28,151 +24,98 @@
 C:\Users\unico\Documents\Codex\2026-05-07\new-ai-toktok-debate
 
 먼저 아래 문서를 읽고 이어서 작업해줘.
+- AGENTS.md
 - PROJECT_HANDOFF.md
 - docs/handoff/00-next-chat-handoff.md
+- docs/handoff/09-final-recommendation-logic.md
+- docs/handoff/10-project-naming-ai-talk-talk.md
 
-이 프로젝트는 사장님용 new AI 톡톡 토론입니다.
-기존 AI 톡톡(new-chat)은 건드리지 말고, 로컬에서만 교수단 심층 토론 버전을 이어서 다듬어줘.
-배포는 아직 하지 마.
+이 프로젝트는 AI Talk Talk입니다.
+사용자에게 보이는 서비스명은 AI Talk Talk으로 통일하고,
+GitHub/Vercel/폴더 slug인 new-ai-toktok-debate는 기존 연결 보호용으로 유지해줘.
 ```
 
 ## 3. 현재 목표
 
-사장님 요청에 맞춰 기존의 가벼운 AI 톡톡과 별도로, 대학교 교수님 수준의 심층 토론 서비스를 만든다.
+AI Talk Talk은 사용자가 200자 이내로 적은 안건을 AI가 먼저 정리하고, Claude/GPT/Gemini가 실제 전문가 회의처럼 논리적으로 토론하는 서비스입니다.
 
-현재 방향:
+핵심 방향:
 
-- 심플 모드 중심이 아닙니다.
-- 매콤한 농담형 서비스가 아닙니다.
-- 교수단이 안건을 검토하는 느낌입니다.
-- 전제, 근거, 반론, 리스크, 실행 조건을 차분하게 다룹니다.
-- 최종 판단은 보고용으로 정리됩니다.
+- 새 스타일을 만들기보다 GPT 프로젝트 지침서의 토론 품질을 재현합니다.
+- 심플 수다형, 카페형, 매콤한 농담형 흐름은 제거합니다.
+- Claude는 낙관, GPT는 비관/회의, Gemini는 중간 관점을 맡습니다.
+- 주제 정리는 별도 사회자가 담당합니다.
+- 로테이션은 주제에 맞게 1~3회 적응형으로 진행합니다.
+- 최종 판단은 `추천 / 조건부 추천 / 보류 / 비추천` 중 자연스럽게 선택합니다.
 
-## 4. 현재 실행 상태
+## 4. 현재 구현 상태
 
-- 로컬 URL: `http://localhost:3010/`
-- 배포 상태: 배포 안 함
-- Vercel 연결: 새 프로젝트 폴더에서는 `.vercel` 폴더를 제거한 상태
-- 저장 방식: 브라우저 localStorage
-- localStorage 키: `newAiToktokProfessorDebates`
-- Git 상태: 새 프로젝트 폴더는 현재 Git 저장소가 아닙니다.
+- 고정 3계정 로그인 구현 완료
+- 같은 ID 중복 로그인 시 새 로그인 우선 처리
+- 계정별 토론 기록 분리 완료
+- Supabase 저장과 localStorage fallback 유지
+- Vercel 배포 완료
+- AI API 키와 Supabase 환경변수는 Vercel에 등록 완료
+- 사용자 화면 이름은 `AI Talk Talk`으로 통일
 
-서버가 꺼져 있으면 새 채팅방에서 아래 순서로 실행하면 됩니다.
+## 5. 핵심 문서
 
-```powershell
-npm.cmd install
-npm.cmd run dev -- -p 3010
-```
+- `docs/handoff/09-final-recommendation-logic.md`
+  - 최종 판단이 항상 조건부 추천으로 쏠리지 않도록 만든 기준
 
-검증용 명령:
+- `docs/handoff/10-project-naming-ai-talk-talk.md`
+  - 공식 이름과 기술 slug 유지 정책
+
+- `docs/supabase-v0.5.0-owner-session.sql`
+  - 계정별 기록 분리와 중복 로그인 차단에 필요한 Supabase SQL
+
+- `docs/work-log/`
+  - 채팅방별 변경 내역 기록
+
+## 6. 주요 파일
+
+- `components/DecisionDashboard.tsx`
+  - 홈 화면, 안건 입력, 이전 토론 기록
+
+- `components/StreamingDecisionView.tsx`
+  - 토론 진행 화면, 말풍선, 최종 결론
+
+- `app/api/debate/stream/route.ts`
+  - 안건 해석, 사회자, 토론 생성, fallback, 최종 결론 생성
+
+- `lib/decision-storage.ts`
+  - Supabase/localStorage 저장, 계정별 기록 조회
+
+- `lib/auth.ts`
+  - 고정 계정 로그인, 세션 쿠키, 중복 로그인 판단
+
+## 7. 검증 기준
+
+작업 후 아래 검사를 기본으로 합니다.
 
 ```powershell
 npx.cmd tsc --noEmit
 npm.cmd run build
 ```
 
-## 5. 이미 적용된 주요 변경
+배포 후에는 Vercel production URL에서 확인합니다.
 
-프로젝트를 기존 AI 톡톡에서 복사한 뒤, 사장님용 심층 토론 방향으로 분리했습니다.
-
-- `package.json`
-  - 프로젝트 이름을 `new-ai-toktok-debate`로 변경했습니다.
-
-- `app/layout.tsx`
-  - 앱 제목을 `new AI 톡톡 토론`으로 변경했습니다.
-  - PWA 설치 팝업은 렌더링하지 않도록 정리했습니다.
-
-- `app/manifest.ts`
-  - 앱 이름과 설명을 새 심층 토론 버전에 맞췄습니다.
-
-- `lib/decision-storage.ts`
-  - 기존 AI 톡톡 저장 기록과 섞이지 않도록 localStorage 키를 새로 분리했습니다.
-
-- `components/DecisionDashboard.tsx`
-  - 홈을 심층 토론 전용 입력 화면으로 바꿨습니다.
-  - 심플/심층 선택 토글을 없앴습니다.
-  - 입력 항목은 토론 안건, 현재 선택지, 우려되는 점, 집중 검토 영역입니다.
-  - 새 토론 생성 시 항상 아래 값으로 시작합니다.
-    - `discussionDepth: "deep"`
-    - `councilMode: "role_based"`
-    - `banterLevel: "off"`
-    - `rebuttalRotations: 2`
-    - 기본 집중 검토: `전제`, `근거`, `리스크`, `실행`
-
-- `app/api/debate/stream/route.ts`
-  - 클라이언트에서 어떤 값이 와도 심층 토론으로 강제합니다.
-  - `discussionDepth`는 항상 `deep`입니다.
-  - `councilMode`는 항상 `role_based`입니다.
-  - `banterLevel`은 항상 `off`입니다.
-  - 발표자는 아래 교수단 역할로 정리했습니다.
-    - Claude 교수: 가능성과 인간 맥락
-    - GPT 교수: 전제, 비용, 리스크 비판 검증
-    - Gemini 교수: 종합 판단과 기준 제시
-
-- `components/StreamingDecisionView.tsx`
-  - 화면 문구를 교수단 토론 톤으로 바꿨습니다.
-  - `Live Seminar`, `교수단 토론` 중심의 결과 화면입니다.
-
-## 6. 검증된 내용
-
-이전 작업에서 확인한 내용입니다.
-
-- 의존성 설치 완료
-- TypeScript 검사 통과
-- production build 통과
-- 로컬 홈 화면이 `http://localhost:3010/`에서 열림
-- 홈에 `new AI 톡톡 토론`, `AI 교수단 심층토론`, `심층 토론 전용` 문구가 표시됨
-- API에 일부러 `discussionDepth: "simple"`, `banterLevel: "spicy"`를 보내도 응답이 교수단 심층 토론으로 나옴
-- API 응답에서 `Claude 교수`, `GPT 교수`, `Gemini 교수`, `FINAL 최종 판단` 흐름을 확인함
-
-## 7. 아직 남은 일
-
-다음 채팅방에서 이어서 하면 좋은 일입니다.
-
-1. 사장님용 UI를 완전히 새 톤으로 정리
-   - 기존 귀여운 AI 톡톡 UI와 분리
-   - 교수단, 심층 검토, 보고용 판단 느낌 강화
-
-2. 실제 화면 기준 QA
-   - 홈에서 안건 입력
-   - 토론 생성
-   - 결과 화면 진입
-   - 최근 심층토론 다시 보기
-   - 오류/중단 상황 확인
-
-3. 교수단 대화 품질 개선
-   - 대학 교수님 수준의 질문 분석
-   - 전제 검토
-   - 찬반 논리
-   - 근거와 한계
-   - 실행 조건
-   - 최종 판단
-
-4. 사장님 시연용 예시 질문 정리
-   - 경영 판단
-   - 인사/조직 판단
-   - 제품/사업 전략
-   - 비용/리스크 판단
-
-5. 배포는 나중에 별도 결정
-   - 방실장님이 요청하기 전에는 Vercel 배포하지 않습니다.
-   - 배포하게 되면 기존 AI 톡톡 Vercel 프로젝트를 재사용하지 말고 별도 프로젝트로 연결해야 합니다.
+```text
+https://new-ai-toktok-debate.vercel.app/
+```
 
 ## 8. 주의할 점
 
-- 이 폴더 안의 `docs/handoff/01~08` 문서는 기존 AI 톡톡에서 복사된 과거 문서일 수 있습니다.
-- 특히 심플 모드, 매콤한 수다, 기존 AI 톡톡 디자인 관련 내용은 새 사장님용 프로젝트와 맞지 않을 수 있습니다.
-- 다음 채팅방은 우선 `PROJECT_HANDOFF.md`와 `docs/handoff/00-next-chat-handoff.md`만 기준으로 삼아야 합니다.
-- 기존 프로젝트 `new-chat`은 방실장님과 지디가 계속 수정할 예정이므로 새 채팅방에서 손대면 안 됩니다.
+- 관리자 화면은 별도 채팅방 담당입니다. 로직/프론트 채팅방에서 자동으로 건드리지 않습니다.
+- `AGENTS.md`의 역할 구분을 먼저 확인합니다.
+- 기존 저장 키, 쿠키 이름, 이미지 파일명은 기록과 배포 안정성을 위해 함부로 바꾸지 않습니다.
+- 예시별 하드코딩은 금지합니다. 모든 토론과 fallback은 정리된 안건 데이터를 기준으로 처리합니다.
 
 ## 9. 사장님께 설명할 말
 
-사장님께는 이렇게 설명하면 됩니다.
-
 ```text
-기존 AI 톡톡은 가벼운 재미형 서비스로 유지하고,
-사장님이 말씀하신 심층 토론 버전은 별도 프로젝트로 분리했습니다.
-새 버전은 세 AI가 교수단처럼 전제, 근거, 리스크, 실행 조건을 나눠 검토하고
-마지막에 보고용 최종 판단을 정리하는 방향입니다.
-아직 배포는 하지 않았고, 로컬에서 방향성과 화면을 먼저 다듬는 단계입니다.
+AI Talk Talk은 사용자가 짧게 적은 안건을 AI가 먼저 정리한 뒤,
+Claude, GPT, Gemini가 낙관, 비관, 중간 관점으로 실제 회의처럼 토론하는 서비스입니다.
+현재는 3명만 로그인할 수 있고, 각자 자기 토론 기록만 보이도록 분리했습니다.
+서비스 이름도 AI Talk Talk으로 통일했고, 기존 배포 주소는 깨지지 않게 유지했습니다.
 ```

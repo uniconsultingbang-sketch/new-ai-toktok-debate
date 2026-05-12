@@ -1,6 +1,6 @@
 {
-  "name": "new-ai-toktok-debate",
-  "version": "0.5.1",
+  "name": "ai-talk-talk",
+  "version": "0.5.2",
   "private": true,
   "scripts": {
     "dev": "next dev",

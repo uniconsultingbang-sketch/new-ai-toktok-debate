@@ -99,7 +99,7 @@ export function PwaInstallPrompt() {
         </button>
         <img src="/images/ai-toktok-icon-192.png" alt="" className="pwa-install-icon" draggable={false} />
         <p className="pwa-install-eyebrow">앱처럼 바로 열기</p>
-        <h2 id="pwa-install-title">AI 톡톡을 홈 화면에 추가할까요?</h2>
+        <h2 id="pwa-install-title">AI Talk Talk를 홈 화면에 추가할까요?</h2>
         <p className="pwa-install-copy">주소창 없이 바로 열 수 있어요. 시연할 때도 훨씬 앱처럼 보입니다.</p>
 
         {isIos ? (

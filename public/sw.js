@@ -1,4 +1,4 @@
-const CACHE_NAME = "ai-toktok-shell-v1";
+const CACHE_NAME = "ai-talk-talk-shell-v1";
 const SHELL_ASSETS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

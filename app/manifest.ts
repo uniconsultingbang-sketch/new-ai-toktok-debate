@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "new AI 톡톡 토론",
-    short_name: "3관점 토론",
-    description: "낙관, 회의, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 로컬 앱",
+    name: "AI Talk Talk",
+    short_name: "AI Talk Talk",
+    description: "낙관, 회의, 중간 관점의 전문가들이 안건을 논리적으로 토론하는 AI Talk Talk 앱",
     start_url: "/",
     scope: "/",
     display: "standalone",

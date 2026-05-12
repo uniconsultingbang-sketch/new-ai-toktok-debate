@@ -190,8 +190,8 @@ export function DecisionDashboard() {
           </label>
 
           <div className="simple-brand">
-            <p>3관점 논리 토론</p>
-            <span>전문가 회의형 AI 토론</span>
+            <p>AI Talk Talk</p>
+            <span>3관점 논리 토론</span>
           </div>
 
           {auth?.configured ? (
