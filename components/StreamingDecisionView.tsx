@@ -556,7 +556,11 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
         </div>
         <time>{formatBubbleTime(event.createdAt)}</time>
       </div>
-      <p className="prof-turn-message">{sanitizeDisplayText(event.message)}</p>
+      <div className="prof-turn-message">
+        {formatReadableMessage(event.message).map((paragraph, index) => (
+          <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
+        ))}
+      </div>
     </article>
   );
 }
@@ -726,6 +730,68 @@ function sanitizeDisplayText(value: string) {
     .replace(/Claude\s*교수/g, "Claude")
     .replace(/GPT\s*교수/g, "GPT")
     .replace(/Gemini\s*교수/g, "Gemini");
+}
+
+function formatReadableMessage(value: string) {
+  const sanitized = sanitizeDisplayText(value)
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+
+  if (!sanitized) {
+    return [""];
+  }
+
+  const explicitParagraphs = sanitized
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (explicitParagraphs.length > 1) {
+    return explicitParagraphs;
+  }
+
+  const explicitLines = sanitized
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (explicitLines.length > 1) {
+    return explicitLines;
+  }
+
+  const sentences = sanitized.match(/[^.!?。！？]+[.!?。！？]?/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [
+    sanitized,
+  ];
+
+  if (sentences.length <= 1) {
+    return sentences;
+  }
+
+  const paragraphs: string[] = [];
+  let buffer = "";
+
+  for (const sentence of sentences) {
+    const shouldBreak =
+      !buffer ||
+      buffer.length >= 90 ||
+      /^(다만|하지만|그래서|결국|반면|또한|즉|따라서|현실적으로|이 경우|추가로)/.test(sentence);
+
+    if (shouldBreak) {
+      if (buffer) {
+        paragraphs.push(buffer.trim());
+      }
+      buffer = sentence;
+    } else {
+      buffer = `${buffer} ${sentence}`;
+    }
+  }
+
+  if (buffer) {
+    paragraphs.push(buffer.trim());
+  }
+
+  return paragraphs;
 }
 
 function formatBubbleTime(value: string) {

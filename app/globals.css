@@ -1494,11 +1494,21 @@ span {
 
 .prof-turn-message {
   margin: 12px 0 0;
-  white-space: pre-wrap;
   color: #252b3b;
   font-size: 15px;
   font-weight: 480;
   line-height: 1.64;
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.prof-turn-message p {
+  margin: 0;
+}
+
+.prof-turn-message p + p {
+  margin-top: 8px;
 }
 
 .prof-note-card {
