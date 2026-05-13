@@ -155,7 +155,7 @@ export async function loadDecisionsAsync(ownerId?: string | null, options: LoadD
   }
 
   const remoteDecisions = await loadRemoteDecisions(owner);
-  const merged = mergeDecisions(remoteDecisions, localDecisions, owner);
+  const merged = owner ? mergeDecisions(remoteDecisions, localDecisions, owner) : remoteDecisions;
   writeStorage(merged, owner);
   return filterDeleted(merged, options);
 }
