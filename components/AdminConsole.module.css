@@ -94,9 +94,9 @@
 .navItem {
   min-height: 42px;
   display: grid;
-  grid-template-columns: 22px 1fr;
+  grid-template-columns: 28px 1fr;
   grid-template-rows: auto auto;
-  column-gap: 9px;
+  column-gap: 10px;
   align-items: center;
   border: 0;
   border-radius: 8px;
@@ -113,7 +113,20 @@
 
 .navItem > span {
   grid-row: 1 / span 2;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f4f7fb;
   color: #667085;
+}
+
+.navItem > span svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.9;
 }
 
 .navItem strong {
@@ -135,6 +148,7 @@
 
 .navItem:hover > span,
 .navItemActive > span {
+  background: #dfeaff;
   color: #2563eb;
 }
 
