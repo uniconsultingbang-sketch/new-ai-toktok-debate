@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole, LogIn, UserRound } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import styles from "./AdminLogin.module.css";
 
 export function LoginForm() {
@@ -13,6 +13,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showLoginHeroImage, setShowLoginHeroImage] = useState(true);
   const nextPath = searchParams.get("next") || "/";
   const isAdminLogin = nextPath === "/admin" || nextPath.startsWith("/admin?");
   const adminUserId = "demo03";
@@ -132,50 +133,75 @@ export function LoginForm() {
           <p>AI와 함께 자유롭게 이야기해보세요.</p>
         </div>
 
-        <div className="login-bot-stage" aria-hidden="true">
-          <div className="mobile-bot mobile-bot-claude">
-            <span className="mobile-bot-bubble">♥</span>
-            <span className="mobile-bot-face" />
-            <strong>Claude</strong>
-          </div>
-          <div className="mobile-bot mobile-bot-gpt">
-            <span className="mobile-bot-bubble">•••</span>
-            <span className="mobile-bot-face" />
-            <strong>GPT</strong>
-          </div>
-          <div className="mobile-bot mobile-bot-gemini">
-            <span className="mobile-bot-bubble">✦</span>
-            <span className="mobile-bot-face" />
-            <strong>Gemini</strong>
-          </div>
+        <div className="login-hero-card" aria-hidden="true">
+          {showLoginHeroImage ? (
+            <img
+              src="/images/ai-talk-login-robots.png"
+              alt=""
+              className="login-hero-image"
+              draggable={false}
+              onError={() => setShowLoginHeroImage(false)}
+            />
+          ) : (
+            <div className="login-bot-stage">
+              <div className="mobile-bot mobile-bot-claude">
+                <span className="mobile-bot-bubble">♥</span>
+                <span className="mobile-bot-face" />
+                <strong>Claude</strong>
+              </div>
+              <div className="mobile-bot mobile-bot-gpt">
+                <span className="mobile-bot-bubble">•••</span>
+                <span className="mobile-bot-face" />
+                <strong>GPT</strong>
+              </div>
+              <div className="mobile-bot mobile-bot-gemini">
+                <span className="mobile-bot-bubble">✦</span>
+                <span className="mobile-bot-face" />
+                <strong>Gemini</strong>
+              </div>
+            </div>
+          )}
         </div>
 
         <form onSubmit={submitLogin} className="login-form">
           <label>
             <span>아이디</span>
-            <input
-              value={id}
-              onChange={(event) => setId(event.target.value)}
-              autoComplete="username"
-              placeholder="아이디"
-            />
+            <div className="login-input-shell">
+              <UserRound size={22} aria-hidden="true" />
+              <input
+                value={id}
+                onChange={(event) => setId(event.target.value)}
+                autoComplete="username"
+                placeholder="아이디를 입력하세요"
+              />
+            </div>
           </label>
 
           <label>
             <span>비밀번호</span>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              autoComplete="current-password"
-              placeholder="비밀번호"
-            />
+            <div className="login-input-shell">
+              <LockKeyhole size={22} aria-hidden="true" />
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="비밀번호를 입력하세요"
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+              >
+                {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+              </button>
+            </div>
           </label>
 
           {error ? <p className="login-error">{error}</p> : null}
 
           <button type="submit" disabled={isLoading}>
-            <LogIn className="size-5" />
             {isLoading ? "확인 중..." : "로그인"}
           </button>
         </form>
