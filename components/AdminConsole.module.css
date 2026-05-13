@@ -649,6 +649,7 @@
 .completed { background: #e8f7ef; color: #1f9b63; }
 .failed { background: #fff0f0; color: #e45454; }
 .paused { background: #f2f4f7; color: #667085; }
+.deleted { background: #fff7ed; color: #b45309; }
 
 .table {
   display: grid;

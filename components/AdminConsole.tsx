@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -81,6 +81,7 @@ type UserUsageSummary = {
 };
 
 const PRICING_STORAGE_KEY = "aiTalkTalkAdminPricingConfig";
+const USD_TO_KRW = 1400;
 
 const defaultPricing: PricingConfig = {
   openai: {
@@ -145,7 +146,7 @@ const tabMeta: Record<AdminTab, { title: string; description: string }> = {
   },
   pricing: {
     title: "요금 계산 설정",
-    description: "모델별 입력/출력 토큰 단가를 현재 브라우저 기준으로 저장합니다.",
+    description: "모델별 달러 단가를 입력하면 어드민 비용은 원화 기준으로 환산해 보여줍니다.",
   },
 };
 
@@ -241,7 +242,7 @@ export function AdminConsole() {
     setNotice("최신 운영 데이터를 확인하고 있습니다.");
 
     const [nextDecisions, authResponse] = await Promise.all([
-      loadDecisionsAsync(null),
+      loadDecisionsAsync(null, { includeDeleted: true }),
       fetch("/api/auth/me", { cache: "no-store" })
         .then((response) => response.json() as Promise<AuthMe>)
         .catch(() => null),
@@ -307,7 +308,7 @@ export function AdminConsole() {
 
     setPricing(next);
     savePricingConfig(next);
-    setNotice("요금 계산 설정을 현재 브라우저에 저장했습니다.");
+    setNotice("요금 계산 설정을 이 PC의 어드민 화면에 저장했습니다.");
   }
 
   return (
@@ -472,7 +473,7 @@ function DashboardView({
         <StatCard icon={<CheckCircle2 size={22} />} label="완료 수" value={`${dashboard.completed}`} helper="정상 완료된 토론" tone="green" />
         <StatCard icon={<AlertTriangle size={22} />} label="오류 수" value={`${dashboard.failed}`} helper="오류로 종료된 토론" tone="red" />
         <StatCard icon={<BarChart3 size={22} />} label="추정 토큰" value={formatNumber(dashboard.totalTokens)} helper="전체 추정 토큰 수" tone="blue" />
-        <StatCard icon={<Coins size={22} />} label="추정 비용 (USD)" value={formatUsd(dashboard.totalCost)} helper="전체 추정 비용" tone="yellow" />
+        <StatCard icon={<Coins size={22} />} label="추정 비용" value={formatCost(dashboard.totalCost)} helper="전체 추정 비용" tone="yellow" />
       </section>
 
       <section className={styles.dashboardTopGrid}>
@@ -486,7 +487,7 @@ function DashboardView({
           <DonutEmpty title="아직 데이터가 없습니다." description="토론 기록이 생성되면 상태 분포가 표시됩니다." />
         </Panel>
 
-        <Panel title="모델별 비용 요약 (USD)" label="">
+        <Panel title="모델별 비용 요약" label="">
           <div className={styles.legendRow}>
             <span><i className={styles.legendBlue} />OpenAI</span>
             <span><i className={styles.legendSky} />Claude</span>
@@ -506,7 +507,7 @@ function DashboardView({
           <div className={styles.infoNote}>
             <strong>안내</strong>
             <span>기존 기록은 실제 토큰 데이터가 없어 추정치로 표시됩니다.</span>
-            <span>요금 계산 설정은 추정 비용 계산의 기준입니다.</span>
+            <span>요금 계산 설정은 원화 환산 비용의 기준입니다.</span>
           </div>
         </Panel>
       </section>
@@ -548,13 +549,13 @@ function UsersView({ userSummaries }: { userSummaries: UserUsageSummary[] }) {
               <span>{user.topicCount}건</span>
               <span>{user.dates.join(", ") || "-"}</span>
               <span className={styles.muted}>본문 내용 미표시</span>
-              <em>{formatUsd(user.costUsd)}</em>
+              <em>{formatCost(user.costUsd)}</em>
             </div>
             <div className={styles.titleList}>
               {user.records.map(({ decision, costUsd }) => (
                 <span key={decision.id}>
                   {decision.title || "제목 없는 토론"} · {formatDecisionDate(decision.createdAt)} ·{" "}
-                  {statusLabels[decision.status]} · {formatUsd(costUsd)}
+                  {recordStatusLabel(decision)} · {formatCost(costUsd)}
                 </span>
               ))}
             </div>
@@ -594,7 +595,7 @@ function CostsView({
           </div>
           <div>
             <span>전체 추정 비용</span>
-            <strong>{formatUsd(dashboard.totalCost)}</strong>
+            <strong>{formatCost(dashboard.totalCost)}</strong>
           </div>
         </div>
         <p className={styles.helperText}>
@@ -614,7 +615,7 @@ function CostsView({
                   입력 {formatNumber(item.inputTokens)} · 출력 {formatNumber(item.outputTokens)}
                 </small>
               </div>
-              <em>{formatUsd(item.costUsd)}</em>
+              <em>{formatCost(item.costUsd)}</em>
             </div>
           ))}
           {!providerTotals.length ? (
@@ -648,7 +649,7 @@ function CostsView({
                 </div>
                 <div>
                   <dt>비용</dt>
-                  <dd>{formatUsd(item.costUsd)}</dd>
+                  <dd>{formatCost(item.costUsd)}</dd>
                 </div>
               </dl>
             </article>
@@ -705,11 +706,13 @@ function RecordsView({
               key={decision.id}
             >
               <button type="button" onClick={() => onSelect(decision.id)}>
-                <span className={`${styles.statusBadge} ${styles[decision.status]}`}>{statusLabels[decision.status]}</span>
+                <span className={`${styles.statusBadge} ${styles[decision.deletedAt ? "deleted" : decision.status]}`}>
+                  {recordStatusLabel(decision)}
+                </span>
                 <strong>{decision.title || "제목 없는 토론"}</strong>
                 <small>
                   {ownerLabel(decision.ownerId)} · {formatDecisionDate(decision.updatedAt)} · {formatNumber(totalTokens)} tokens ·{" "}
-                  {formatUsd(costUsd)}
+                  {formatCost(costUsd)}
                 </small>
               </button>
 
@@ -744,8 +747,8 @@ function RecordsView({
       <Panel title="선택 기록 상세" label="Detail">
         {selectedUsage ? (
           <div className={styles.detailBox}>
-            <span className={`${styles.statusBadge} ${styles[selectedUsage.decision.status]}`}>
-              {statusLabels[selectedUsage.decision.status]}
+            <span className={`${styles.statusBadge} ${styles[selectedUsage.decision.deletedAt ? "deleted" : selectedUsage.decision.status]}`}>
+              {recordStatusLabel(selectedUsage.decision)}
             </span>
             <h3>{selectedUsage.decision.title || "제목 없는 토론"}</h3>
             <dl>
@@ -766,9 +769,17 @@ function RecordsView({
                 <dd>관리자 화면 정책상 표시하지 않음</dd>
               </div>
               <div>
+                <dt>삭제 상태</dt>
+                <dd>
+                  {selectedUsage.decision.deletedAt
+                    ? `사용자 화면에서 삭제됨 · ${formatDecisionDate(selectedUsage.decision.deletedAt)}`
+                    : "사용자 화면에 표시 중"}
+                </dd>
+              </div>
+              <div>
                 <dt>토큰/비용</dt>
                 <dd>
-                  {formatNumber(selectedUsage.totalTokens)} tokens · {formatUsd(selectedUsage.costUsd)}
+                  {formatNumber(selectedUsage.totalTokens)} tokens · {formatCost(selectedUsage.costUsd)}
                 </dd>
               </div>
             </dl>
@@ -811,7 +822,7 @@ function PricingView({
     <Panel title="요금 계산 설정" label="Pricing" wide={!compact}>
       <div className={styles.pricingIntro}>
         <Settings size={18} />
-        <p>현재 브라우저 기준 설정입니다. 배포 DB 설정 없이도 시연할 수 있고, 나중에 Supabase 설정 테이블로 옮길 수 있습니다.</p>
+        <p>AI 업체 단가는 달러로 입력하고, 어드민 비용은 원화로 환산해 보여줍니다. 지금 바꾼 단가는 이 PC의 어드민 화면에 저장되는 운영 참고용 설정입니다.</p>
         <button type="button" onClick={onReset}>기본값 복원</button>
       </div>
 
@@ -824,7 +835,7 @@ function PricingView({
               <input value={pricing[key].model} onChange={(event) => onPricingChange(key, "model", event.target.value)} />
             </label>
             <label>
-              <span>입력 100만 토큰당 USD</span>
+              <span>입력 100만 토큰당 달러</span>
               <input
                 inputMode="decimal"
                 min="0"
@@ -834,7 +845,7 @@ function PricingView({
               />
             </label>
             <label>
-              <span>출력 100만 토큰당 USD</span>
+              <span>출력 100만 토큰당 달러</span>
               <input
                 inputMode="decimal"
                 min="0"
@@ -1120,6 +1131,10 @@ function ownerLabel(ownerId?: string | null) {
   return ownerId?.trim() || "공용 기록";
 }
 
+function recordStatusLabel(decision: DecisionRecord) {
+  return decision.deletedAt ? "사용자 삭제됨" : statusLabels[decision.status];
+}
+
 function formatShortDate(value: string) {
   const date = new Date(value);
 
@@ -1137,6 +1152,10 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("ko-KR").format(Math.round(value));
 }
 
-function formatUsd(value: number) {
-  return `$${value.toFixed(value < 1 ? 4 : 2)}`;
+function formatCost(valueUsd: number) {
+  const krw = Math.round(valueUsd * USD_TO_KRW);
+  const usd = valueUsd.toFixed(valueUsd < 1 ? 4 : 2);
+  return `₩${new Intl.NumberFormat("ko-KR").format(krw)} ($${usd})`;
 }
+
+

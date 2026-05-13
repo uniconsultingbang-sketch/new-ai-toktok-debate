@@ -74,6 +74,8 @@ export type DecisionRecord = {
   events: DebateEvent[];
   finalReport: FinalReport | null;
   error: string | null;
+  deletedAt?: string;
+  deletedBy?: "user" | "admin";
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
@@ -87,6 +89,10 @@ export type DecisionRecord = {
       costUsd: number;
     }>;
   };
+};
+
+type LoadDecisionOptions = {
+  includeDeleted?: boolean;
 };
 
 const STORAGE_KEY = "newAiToktokProfessorDebates";
@@ -115,20 +121,21 @@ export function createDecisionId() {
   return `decision-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function loadDecisions(ownerId?: string | null): DecisionRecord[] {
+export function loadDecisions(ownerId?: string | null, options: LoadDecisionOptions = {}): DecisionRecord[] {
   if (typeof window === "undefined") {
     return [];
   }
 
   const owner = normalizeOwnerId(ownerId);
   const primary = readStorage(storageKey(owner), owner);
+  const visiblePrimary = filterDeleted(primary, options);
 
   if (owner) {
-    return primary;
+    return visiblePrimary;
   }
 
   if (primary.length) {
-    return primary;
+    return visiblePrimary;
   }
 
   const legacy = readStorage(legacyStorageKey(null), null);
@@ -136,26 +143,21 @@ export function loadDecisions(ownerId?: string | null): DecisionRecord[] {
     writeStorage(legacy, null);
   }
 
-  return legacy;
+  return filterDeleted(legacy, options);
 }
 
-export async function loadDecisionsAsync(ownerId?: string | null): Promise<DecisionRecord[]> {
+export async function loadDecisionsAsync(ownerId?: string | null, options: LoadDecisionOptions = {}): Promise<DecisionRecord[]> {
   const owner = normalizeOwnerId(ownerId);
-  const localDecisions = loadDecisions(owner);
+  const localDecisions = loadDecisions(owner, { includeDeleted: true });
 
   if (!supabase) {
-    return localDecisions;
+    return filterDeleted(localDecisions, options);
   }
 
   const remoteDecisions = await loadRemoteDecisions(owner);
   const merged = mergeDecisions(remoteDecisions, localDecisions, owner);
   writeStorage(merged, owner);
-  return merged;
-}
-
-export function getDecision(id: string, ownerId?: string | null) {
-  const owner = normalizeOwnerId(ownerId);
-  return loadDecisions(owner).find((decision) => decision.id === id && belongsToOwner(decision, owner)) ?? null;
+  return filterDeleted(merged, options);
 }
 
 export async function getDecisionAsync(id: string, ownerId?: string | null) {
@@ -168,7 +170,7 @@ export async function getDecisionAsync(id: string, ownerId?: string | null) {
 
   const remoteDecision = await loadRemoteDecision(id, owner);
 
-  if (!remoteDecision) {
+  if (!remoteDecision || remoteDecision.deletedAt) {
     return null;
   }
 
@@ -183,7 +185,7 @@ export function saveDecision(decision: DecisionRecord, ownerId?: string | null) 
 
   const owner = normalizeOwnerId(ownerId ?? decision.ownerId);
   const normalized = normalizeDecision(decision, owner);
-  const decisions = loadDecisions(owner);
+  const decisions = loadDecisions(owner, { includeDeleted: true });
   const index = decisions.findIndex((item) => item.id === normalized.id);
   const next =
     index >= 0
@@ -226,33 +228,27 @@ export function deleteDecision(id: string, ownerId?: string | null) {
   }
 
   const owner = normalizeOwnerId(ownerId);
-  const next = loadDecisions(owner).filter((decision) => decision.id !== id);
+  const next = loadDecisions(owner, { includeDeleted: true }).map((decision) =>
+    decision.id === id ? markDecisionDeleted(decision, "user") : decision,
+  );
   writeStorage(next, owner);
 }
 
 export async function deleteDecisionAsync(id: string, ownerId?: string | null) {
   const owner = normalizeOwnerId(ownerId);
   deleteDecision(id, owner);
+  const deletedDecision = getDecision(id, owner, { includeDeleted: true });
 
-  if (!supabase) {
+  if (!supabase || !deletedDecision) {
     return;
   }
 
-  if (!owner) {
-    await supabase.from("decision_records").delete().eq("id", id);
-    return;
-  }
+  await saveDecisionAsync(deletedDecision, owner);
+}
 
-  const { error } = await supabase.from("decision_records").delete().eq("id", id).eq("owner_id", owner);
-
-  if (!error) {
-    return;
-  }
-
-  const remoteDecision = await loadRemoteDecision(id, owner);
-  if (remoteDecision?.ownerId === owner) {
-    await supabase.from("decision_records").delete().eq("id", id);
-  }
+export function getDecision(id: string, ownerId?: string | null, options: LoadDecisionOptions = {}) {
+  const owner = normalizeOwnerId(ownerId);
+  return loadDecisions(owner, options).find((decision) => decision.id === id && belongsToOwner(decision, owner)) ?? null;
 }
 
 export function formatDecisionDate(value: string) {
@@ -380,6 +376,21 @@ function writeStorage(decisions: DecisionRecord[], ownerId: string | null) {
   if (!ownerId) {
     window.localStorage.setItem(LEGACY_STORAGE_KEY, value);
   }
+}
+
+function filterDeleted(decisions: DecisionRecord[], options: LoadDecisionOptions) {
+  return options.includeDeleted ? decisions : decisions.filter((decision) => !decision.deletedAt);
+}
+
+function markDecisionDeleted(decision: DecisionRecord, deletedBy: "user" | "admin"): DecisionRecord {
+  const deletedAt = decision.deletedAt ?? new Date().toISOString();
+
+  return {
+    ...decision,
+    deletedAt,
+    deletedBy,
+    updatedAt: deletedAt,
+  };
 }
 
 function storageKey(ownerId: string | null) {
