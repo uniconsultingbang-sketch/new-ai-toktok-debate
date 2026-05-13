@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Coins,
   Database,
-  Filter,
   FolderKanban,
   Gauge,
   Layers3,
@@ -83,6 +82,11 @@ type UserUsageSummary = {
 const PRICING_STORAGE_KEY = "aiTalkTalkAdminPricingConfig";
 const USD_TO_KRW = 1400;
 const REGISTERED_USER_COUNT = 3;
+const REGISTERED_USERS = ["demo01", "demo02", "demo03"] as const;
+const PAGE_SIZE = 5;
+
+type OwnerFilter = "all" | (typeof REGISTERED_USERS)[number];
+type PeriodFilter = "all" | "today" | "7d" | "30d";
 
 const defaultPricing: PricingConfig = {
   openai: {
@@ -111,14 +115,6 @@ const statusLabels: Record<DecisionStatus, string> = {
   completed: "완료",
   failed: "오류",
 };
-
-const statusOptions: Array<{ value: "all" | DecisionStatus; label: string }> = [
-  { value: "all", label: "전체" },
-  { value: "running", label: "토론 중" },
-  { value: "completed", label: "완료" },
-  { value: "failed", label: "오류" },
-  { value: "paused", label: "중단" },
-];
 
 const navigationItems: Array<{ id: AdminTab; label: string; helper: string; icon: React.ReactNode }> = [
   { id: "dashboard", label: "전체 대시보드", helper: "운영 현황", icon: <Gauge size={16} /> },
@@ -156,7 +152,8 @@ export function AdminConsole() {
   const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
   const [auth, setAuth] = useState<AuthMe | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | DecisionStatus>("all");
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState("관리자 데이터를 불러오는 중입니다.");
@@ -172,45 +169,57 @@ export function AdminConsole() {
     [decisions, pricing],
   );
 
+  const scopedUsage = useMemo(
+    () =>
+      usageSummaries.filter(({ decision }) => {
+        const ownerId = ownerLabel(decision.ownerId);
+        return (ownerFilter === "all" || ownerId === ownerFilter) && isInPeriod(decision.createdAt, periodFilter);
+      }),
+    [ownerFilter, periodFilter, usageSummaries],
+  );
+
   const dashboard = useMemo(() => {
-    const completed = decisions.filter((decision) => decision.status === "completed").length;
-    const running = decisions.filter((decision) => decision.status === "running").length;
-    const failed = decisions.filter((decision) => decision.status === "failed").length;
-    const paused = decisions.filter((decision) => decision.status === "paused").length;
-    const totalTokens = usageSummaries.reduce((sum, item) => sum + item.totalTokens, 0);
-    const totalCost = usageSummaries.reduce((sum, item) => sum + item.costUsd, 0);
+    const scopedDecisions = scopedUsage.map((item) => item.decision);
+    const completed = scopedDecisions.filter((decision) => decision.status === "completed").length;
+    const running = scopedDecisions.filter((decision) => decision.status === "running").length;
+    const failed = scopedDecisions.filter((decision) => decision.status === "failed").length;
+    const paused = scopedDecisions.filter((decision) => decision.status === "paused").length;
+    const deleted = scopedDecisions.filter((decision) => decision.deletedAt).length;
+    const totalTokens = scopedUsage.reduce((sum, item) => sum + item.totalTokens, 0);
+    const totalCost = scopedUsage.reduce((sum, item) => sum + item.costUsd, 0);
 
     return {
-      total: decisions.length,
+      total: scopedDecisions.length,
       completed,
       running,
       failed,
       paused,
+      deleted,
       owners: REGISTERED_USER_COUNT,
       totalTokens,
       totalCost,
     };
-  }, [decisions, usageSummaries]);
+  }, [scopedUsage]);
 
   const filteredUsage = useMemo(() => {
     const keyword = query.trim().toLowerCase();
 
-    return usageSummaries.filter(({ decision }) => {
+    return scopedUsage.filter(({ decision }) => {
       const searchable = [decision.title, decision.ownerId ?? "", getTopicLabel(decision.topicType)]
         .join(" ")
         .toLowerCase();
       const matchesKeyword = !keyword || searchable.includes(keyword);
-      const matchesStatus = statusFilter === "all" || decision.status === statusFilter;
-      return matchesKeyword && matchesStatus;
+      return matchesKeyword;
     });
-  }, [query, statusFilter, usageSummaries]);
+  }, [query, scopedUsage]);
 
-  const userSummaries = useMemo(() => buildUserSummaries(filteredUsage), [filteredUsage]);
+  const userSummaries = useMemo(() => buildUserSummaries(scopedUsage), [scopedUsage]);
+  const filteredUserSummaries = useMemo(() => buildUserSummaries(filteredUsage), [filteredUsage]);
 
   const providerTotals = useMemo(() => {
     const totals = new Map<string, CostBreakdown>();
 
-    for (const usage of usageSummaries) {
+    for (const usage of scopedUsage) {
       for (const modelCost of usage.modelCosts) {
         const key = `${modelCost.provider}:${modelCost.model}`;
         const current =
@@ -232,10 +241,10 @@ export function AdminConsole() {
     }
 
     return Array.from(totals.values()).sort((a, b) => b.costUsd - a.costUsd);
-  }, [usageSummaries]);
+  }, [scopedUsage]);
 
   const selectedUsage =
-    usageSummaries.find((usage) => usage.decision.id === selectedId) ?? filteredUsage[0] ?? usageSummaries[0] ?? null;
+    filteredUsage.find((usage) => usage.decision.id === selectedId) ?? filteredUsage[0] ?? null;
 
   async function refreshAdminData() {
     setIsLoading(true);
@@ -324,7 +333,7 @@ export function AdminConsole() {
 
         <label className={styles.sidebarSearch}>
           <Search size={15} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search..." />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="기록 검색..." />
         </label>
 
         <div className={styles.menuLabel}>Admin Menu</div>
@@ -368,10 +377,27 @@ export function AdminConsole() {
             <p>{tabMeta[activeTab].description}</p>
           </div>
           <div className={styles.topActions}>
-            <button className={styles.dateButton} type="button">
-              2025.04.23 ~ 2025.04.29
+            <label className={styles.selectControl}>
+              <span>사용자</span>
+              <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as OwnerFilter)}>
+                <option value="all">전체</option>
+                {REGISTERED_USERS.map((userId) => (
+                  <option key={userId} value={userId}>
+                    {userId}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.selectControl}>
+              <span>기간</span>
+              <select value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value as PeriodFilter)}>
+                <option value="all">전체 기간</option>
+                <option value="today">오늘</option>
+                <option value="7d">최근 7일</option>
+                <option value="30d">최근 30일</option>
+              </select>
               <CalendarDays size={15} />
-            </button>
+            </label>
             <button className={styles.primaryButton} type="button" onClick={() => void refreshAdminData()}>
               {isLoading ? <Loader2 className={styles.spinIcon} size={16} /> : <RefreshCw size={16} />}
               새로고침
@@ -388,22 +414,11 @@ export function AdminConsole() {
           <DashboardView
             dashboard={dashboard}
             providerTotals={providerTotals}
-            recentUsage={usageSummaries.slice(0, 5)}
             userSummaries={userSummaries}
-            filteredUsage={filteredUsage}
-            statusFilter={statusFilter}
-            pricing={pricing}
-            onStatusFilterChange={setStatusFilter}
-            onPricingChange={updatePricing}
-            onResetPricing={() => {
-              setPricing(defaultPricing);
-              savePricingConfig(defaultPricing);
-              setNotice("요금 계산 설정을 기본값으로 되돌렸습니다.");
-            }}
           />
         ) : null}
 
-        {activeTab === "users" ? <UsersView userSummaries={userSummaries} /> : null}
+        {activeTab === "users" ? <UsersView userSummaries={filteredUserSummaries} /> : null}
 
         {activeTab === "costs" ? (
           <CostsView dashboard={dashboard} providerTotals={providerTotals} usageSummaries={filteredUsage} />
@@ -417,8 +432,6 @@ export function AdminConsole() {
             <RecordsView
               filteredUsage={filteredUsage}
               selectedUsage={selectedUsage}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
               onSelect={(id) => setSelectedId(id)}
               onStatusChange={(decision, status) => void changeDecisionStatus(decision, status)}
               onDelete={(decision) => void deleteDecision(decision)}
@@ -441,14 +454,7 @@ export function AdminConsole() {
 function DashboardView({
   dashboard,
   providerTotals,
-  recentUsage,
   userSummaries,
-  filteredUsage,
-  statusFilter,
-  pricing,
-  onStatusFilterChange,
-  onPricingChange,
-  onResetPricing,
 }: {
   dashboard: {
     total: number;
@@ -456,24 +462,14 @@ function DashboardView({
     running: number;
     failed: number;
     paused: number;
+    deleted: number;
     owners: number;
     totalTokens: number;
     totalCost: number;
   };
   providerTotals: CostBreakdown[];
-  recentUsage: DecisionUsageSummary[];
   userSummaries: UserUsageSummary[];
-  filteredUsage: DecisionUsageSummary[];
-  statusFilter: "all" | DecisionStatus;
-  pricing: PricingConfig;
-  onStatusFilterChange: (status: "all" | DecisionStatus) => void;
-  onPricingChange: (providerKey: keyof PricingConfig, field: keyof PricingConfig[keyof PricingConfig], value: string) => void;
-  onResetPricing: () => void;
 }) {
-  const [dashboardSelectedId, setDashboardSelectedId] = useState<string | null>(null);
-  const dashboardSelectedUsage =
-    recentUsage.find((usage) => usage.decision.id === dashboardSelectedId) ?? recentUsage[0] ?? null;
-
   return (
     <>
       <section className={styles.statGrid}>
@@ -493,7 +489,7 @@ function DashboardView({
             <span><i className={styles.legendRed} />오류</span>
             <span><i className={styles.legendGray} />대기</span>
           </div>
-          <DonutEmpty title="아직 데이터가 없습니다." description="토론 기록이 생성되면 상태 분포가 표시됩니다." />
+          <StatusSummary dashboard={dashboard} />
         </Panel>
 
         <Panel title="모델별 비용 요약" label="">
@@ -502,7 +498,7 @@ function DashboardView({
             <span><i className={styles.legendSky} />Claude</span>
             <span><i className={styles.legendNavy} />Gemini</span>
           </div>
-          <BarEmpty title="아직 데이터가 없습니다." description="비용 데이터가 쌓이면 모델별 요약이 표시됩니다." />
+          <ProviderCostSummary providerTotals={providerTotals} />
         </Panel>
 
         <Panel title="" label="" className={styles.infoPanel}>
@@ -524,20 +520,87 @@ function DashboardView({
       <section className={styles.dashboardMainGrid}>
         <UserTokenSummaryPanel userSummaries={userSummaries} />
         <UsersView userSummaries={userSummaries} />
-        <CostsView dashboard={dashboard} providerTotals={providerTotals} usageSummaries={filteredUsage} compact />
-        <RecordsView
-          filteredUsage={filteredUsage}
-          selectedUsage={dashboardSelectedUsage}
-          statusFilter={statusFilter}
-          onStatusFilterChange={onStatusFilterChange}
-          onSelect={setDashboardSelectedId}
-          onStatusChange={() => undefined}
-          onDelete={() => undefined}
-          readOnly
-        />
-        <PricingView pricing={pricing} onPricingChange={onPricingChange} onReset={onResetPricing} compact />
+        <Panel title="운영 주의 항목" label="Attention">
+          <div className={styles.attentionGrid}>
+            <div>
+              <span>오류 기록</span>
+              <strong>{dashboard.failed}건</strong>
+              <small>오류가 있으면 토론 기록 관리에서 상세를 확인합니다.</small>
+            </div>
+            <div>
+              <span>사용자 삭제 기록</span>
+              <strong>{dashboard.deleted}건</strong>
+              <small>사용자 화면에서는 숨겨져도 비용 계산에는 포함됩니다.</small>
+            </div>
+          </div>
+        </Panel>
       </section>
     </>
+  );
+}
+
+function StatusSummary({
+  dashboard,
+}: {
+  dashboard: { total: number; completed: number; running: number; failed: number; paused: number };
+}) {
+  if (!dashboard.total) {
+    return <DonutEmpty title="아직 데이터가 없습니다." description="토론 기록이 생성되면 상태 분포가 표시됩니다." />;
+  }
+
+  const completed = Math.max(0, Math.round((dashboard.completed / dashboard.total) * 100));
+  const running = Math.max(0, Math.round((dashboard.running / dashboard.total) * 100));
+  const failed = Math.max(0, Math.round((dashboard.failed / dashboard.total) * 100));
+  const paused = Math.max(0, 100 - completed - running - failed);
+
+  return (
+    <div className={styles.statusSummary}>
+      <div
+        className={styles.statusDonut}
+        style={{
+          background: `conic-gradient(#3b72e7 0 ${completed}%, #7aa7ff ${completed}% ${
+            completed + running
+          }%, #e45454 ${completed + running}% ${completed + running + failed}%, #c8d0dd ${
+            completed + running + failed
+          }% 100%)`,
+        }}
+        aria-label={`완료 ${dashboard.completed}건, 진행중 ${dashboard.running}건, 오류 ${dashboard.failed}건, 대기 ${dashboard.paused}건`}
+      >
+        <strong>{dashboard.total}</strong>
+        <span>건</span>
+      </div>
+      <div className={styles.statusMetricGrid}>
+        <span>완료 <strong>{dashboard.completed}</strong></span>
+        <span>진행중 <strong>{dashboard.running}</strong></span>
+        <span>오류 <strong>{dashboard.failed}</strong></span>
+        <span>대기 <strong>{dashboard.paused}</strong></span>
+      </div>
+    </div>
+  );
+}
+
+function ProviderCostSummary({ providerTotals }: { providerTotals: CostBreakdown[] }) {
+  if (!providerTotals.length) {
+    return <BarEmpty title="아직 데이터가 없습니다." description="비용 데이터가 쌓이면 모델별 요약이 표시됩니다." />;
+  }
+
+  const maxCost = Math.max(...providerTotals.map((item) => item.costUsd), 0.000001);
+
+  return (
+    <div className={styles.providerSummary}>
+      {providerTotals.map((item) => (
+        <div className={styles.providerBarRow} key={`${item.provider}-${item.model}`}>
+          <div>
+            <strong>{item.provider}</strong>
+            <span>{formatNumber(item.totalTokens)} tokens</span>
+          </div>
+          <div className={styles.providerBarTrack}>
+            <span style={{ width: `${Math.max(8, (item.costUsd / maxCost) * 100)}%` }} />
+          </div>
+          <em>{formatCost(item.costUsd)}</em>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -594,12 +657,13 @@ function UsersView({ userSummaries }: { userSummaries: UserUsageSummary[] }) {
               <em>{formatCost(user.costUsd)}</em>
             </div>
             <div className={styles.titleList}>
-              {user.records.map(({ decision, costUsd }) => (
+              {user.records.slice(0, PAGE_SIZE).map(({ decision, costUsd }) => (
                 <span key={decision.id}>
                   {decision.title || "제목 없는 토론"} · {formatDecisionDate(decision.createdAt)} ·{" "}
                   {recordStatusLabel(decision)} · {formatCost(costUsd)}
                 </span>
               ))}
+              {user.records.length > PAGE_SIZE ? <span>외 {user.records.length - PAGE_SIZE}건</span> : null}
             </div>
           </div>
         ))}
@@ -626,6 +690,14 @@ function CostsView({
   usageSummaries: DecisionUsageSummary[];
   compact?: boolean;
 }) {
+  const [page, setPage] = useState(1);
+  const pageInfo = getPageInfo(usageSummaries.length, page);
+  const pagedUsage = usageSummaries.slice(pageInfo.start, pageInfo.end);
+
+  useEffect(() => {
+    setPage(1);
+  }, [usageSummaries.length]);
+
   return (
     <section className={compact ? styles.embeddedPanel : styles.twoColumn}>
       <Panel title="토큰/비용 분석" label="Analysis">
@@ -679,7 +751,7 @@ function CostsView({
           <span>비용</span>
         </div>
         <div className={styles.recordCostGrid}>
-          {usageSummaries.map((item) => (
+          {pagedUsage.map((item) => (
             <article className={styles.costCard} key={item.decision.id}>
               <div>
                 <span className={styles.estimateBadge}>{item.estimated ? "추정" : "실제"}</span>
@@ -705,6 +777,7 @@ function CostsView({
             />
           ) : null}
         </div>
+        <PaginationControls total={usageSummaries.length} page={pageInfo.page} totalPages={pageInfo.totalPages} onPageChange={setPage} />
       </Panel>
     </section>
   );
@@ -713,8 +786,6 @@ function CostsView({
 function RecordsView({
   filteredUsage,
   selectedUsage,
-  statusFilter,
-  onStatusFilterChange,
   onSelect,
   onStatusChange,
   onDelete,
@@ -722,29 +793,37 @@ function RecordsView({
 }: {
   filteredUsage: DecisionUsageSummary[];
   selectedUsage: DecisionUsageSummary | null;
-  statusFilter: "all" | DecisionStatus;
-  onStatusFilterChange: (status: "all" | DecisionStatus) => void;
   onSelect: (id: string) => void;
   onStatusChange: (decision: DecisionRecord, status: DecisionStatus) => void;
   onDelete: (decision: DecisionRecord) => void;
   readOnly?: boolean;
 }) {
+  const [page, setPage] = useState(1);
+  const pageInfo = getPageInfo(filteredUsage.length, page);
+  const pagedUsage = filteredUsage.slice(pageInfo.start, pageInfo.end);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filteredUsage.length]);
+
+  useEffect(() => {
+    if (!pagedUsage.length) {
+      return;
+    }
+
+    const selectedOnPage = pagedUsage.some((usage) => usage.decision.id === selectedUsage?.decision.id);
+    if (!selectedOnPage) {
+      onSelect(pagedUsage[0].decision.id);
+    }
+  }, [onSelect, pagedUsage, selectedUsage?.decision.id]);
+
   return (
     <section className={readOnly ? styles.embeddedPanel : styles.recordsLayout}>
       <Panel title="토론 기록 관리" label="Manage" count={`${filteredUsage.length}건`}>
-        <label className={styles.filterBox}>
-          <Filter size={15} />
-          <select value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value as "all" | DecisionStatus)}>
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <p className={styles.sectionHint}>목록을 선택하면 오른쪽 상세가 바뀝니다. 상태는 상세 영역에서 확인하고 변경합니다.</p>
 
         <div className={styles.recordList}>
-          {filteredUsage.map(({ decision, costUsd, totalTokens }) => (
+          {pagedUsage.map(({ decision, costUsd, totalTokens }) => (
             <article
               className={`${styles.recordItem} ${selectedUsage?.decision.id === decision.id ? styles.recordItemActive : ""}`}
               key={decision.id}
@@ -795,6 +874,7 @@ function RecordsView({
             />
           ) : null}
         </div>
+        <PaginationControls total={filteredUsage.length} page={pageInfo.page} totalPages={pageInfo.totalPages} onPageChange={setPage} />
       </Panel>
 
       <Panel title="선택 기록 상세" label="Detail">
@@ -1020,6 +1100,60 @@ function TableEmptyRow({
   );
 }
 
+function PaginationControls({
+  total,
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  total: number;
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (total <= PAGE_SIZE) {
+    return total ? <div className={styles.paginationMeta}>전체 {total}건</div> : null;
+  }
+
+  return (
+    <div className={styles.pagination}>
+      <span>
+        전체 {total}건 · {page}/{totalPages}페이지
+      </span>
+      <div>
+        <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          이전
+        </button>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+          <button
+            className={pageNumber === page ? styles.paginationActive : ""}
+            key={pageNumber}
+            type="button"
+            onClick={() => onPageChange(pageNumber)}
+          >
+            {pageNumber}
+          </button>
+        ))}
+        <button type="button" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          다음
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getPageInfo(total: number, requestedPage: number) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
+  const start = (page - 1) * PAGE_SIZE;
+  return {
+    page,
+    totalPages,
+    start,
+    end: start + PAGE_SIZE,
+  };
+}
+
 function buildUsageSummary(decision: DecisionRecord, pricing: PricingConfig): DecisionUsageSummary {
   if (decision.usage?.modelCosts?.length) {
     const modelCosts = decision.usage.modelCosts.map((item) => ({
@@ -1182,6 +1316,33 @@ function savePricingConfig(config: PricingConfig) {
 
 function ownerLabel(ownerId?: string | null) {
   return ownerId?.trim() || "공용 기록";
+}
+
+function isInPeriod(value: string, period: PeriodFilter) {
+  if (period === "all") {
+    return true;
+  }
+
+  const createdAt = new Date(value);
+  if (Number.isNaN(createdAt.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+
+  if (period === "today") {
+    return (
+      createdAt.getFullYear() === now.getFullYear() &&
+      createdAt.getMonth() === now.getMonth() &&
+      createdAt.getDate() === now.getDate()
+    );
+  }
+
+  const days = period === "7d" ? 7 : 30;
+  const start = new Date(now);
+  start.setDate(now.getDate() - days + 1);
+  start.setHours(0, 0, 0, 0);
+  return createdAt >= start;
 }
 
 function recordStatusLabel(decision: DecisionRecord) {

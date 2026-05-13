@@ -71,6 +71,7 @@
 
 .sidebarSearch input,
 .filterBox select,
+.selectControl select,
 .pricingCard input {
   width: 100%;
   border: 0;
@@ -227,6 +228,29 @@
   align-items: center;
 }
 
+.selectControl {
+  min-height: 34px;
+  display: inline-grid;
+  grid-template-columns: auto minmax(84px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e4e9f2;
+  border-radius: 7px;
+  background: #fff;
+  padding: 0 10px;
+  color: #667085;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.selectControl select {
+  min-width: 88px;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 520;
+}
+
 .dateButton,
 .primaryButton,
 .pricingIntro button {
@@ -359,6 +383,43 @@
 
 .recordsSummaryBand {
   margin-top: 16px;
+}
+
+.attentionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.attentionGrid div {
+  min-height: 94px;
+  border: 1px solid #e7ecf5;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 13px;
+}
+
+.attentionGrid span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.attentionGrid strong {
+  display: block;
+  margin-top: 7px;
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 650;
+}
+
+.attentionGrid small {
+  display: block;
+  margin-top: 8px;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .twoColumn,
@@ -846,6 +907,13 @@
   color: #8a94a6;
 }
 
+.sectionHint {
+  margin: -4px 0 12px;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 .recordItem {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -910,6 +978,49 @@
   border-radius: 7px;
   background: #fff0f0;
   color: #e45454;
+}
+
+.pagination,
+.paginationMeta {
+  margin-top: 12px;
+  color: #667085;
+  font-size: 11px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pagination > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.pagination button {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid #e4e9f2;
+  border-radius: 7px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 540;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pagination .paginationActive {
+  border-color: #bcd2ff;
+  background: #eef4ff;
+  color: #2563eb;
 }
 
 .detailBox {
@@ -1093,7 +1204,8 @@
   .statGrid,
   .recordCostGrid,
   .pricingGrid,
-  .costHero {
+  .costHero,
+  .attentionGrid {
     grid-template-columns: 1fr;
   }
 
@@ -1111,6 +1223,16 @@
 
   .filterBox {
     width: 100%;
+  }
+
+  .selectControl,
+  .pagination {
+    width: 100%;
+  }
+
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .recordActions {
