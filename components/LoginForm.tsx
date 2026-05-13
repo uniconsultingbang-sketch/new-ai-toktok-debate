@@ -15,6 +15,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const nextPath = searchParams.get("next") || "/";
   const isAdminLogin = nextPath === "/admin" || nextPath.startsWith("/admin?");
+  const adminUserId = "demo03";
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,11 +27,17 @@ export function LoginForm() {
     setError("");
     setIsLoading(true);
 
+    if (isAdminLogin && id.trim() !== adminUserId) {
+      setError("관리자 계정만 로그인할 수 있습니다.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: id.trim(), password }),
+        body: JSON.stringify({ id: id.trim(), password, adminOnly: isAdminLogin }),
       });
       const data = (await response.json()) as { error?: string };
 

@@ -12,6 +12,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const users = getLoginUsers();
+  const adminUserId = process.env.ADMIN_USER_ID?.trim() || "demo03";
 
   if (!users.length) {
     return NextResponse.json(
@@ -22,16 +23,21 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { id?: string; password?: string };
+  let body: { id?: string; password?: string; adminOnly?: boolean };
 
   try {
-    body = (await request.json()) as { id?: string; password?: string };
+    body = (await request.json()) as { id?: string; password?: string; adminOnly?: boolean };
   } catch {
     return NextResponse.json({ error: "아이디와 비밀번호를 다시 확인해 주세요." }, { status: 400 });
   }
 
   const id = body.id?.trim() ?? "";
   const password = body.password ?? "";
+
+  if (body.adminOnly && id !== adminUserId) {
+    return NextResponse.json({ error: "관리자 계정만 로그인할 수 있습니다." }, { status: 403 });
+  }
+
   const user = users.find((item) => item.id === id && item.password === password);
 
   if (!user) {

@@ -49,7 +49,18 @@ export async function middleware(request: NextRequest) {
   const session = await verifyActiveSessionToken(request.cookies.get(AUTH_COOKIE_NAME)?.value);
 
   if (pathname === "/login") {
+    const nextPath = request.nextUrl.searchParams.get("next") || "";
+    const isAdminLogin = nextPath === adminPathPrefix || nextPath.startsWith(`${adminPathPrefix}?`);
+
     if (session) {
+      if (isAdminLogin) {
+        if (session.id === adminUserId) {
+          return NextResponse.redirect(new URL(nextPath, request.url));
+        }
+
+        return NextResponse.next();
+      }
+
       return NextResponse.redirect(new URL("/", request.url));
     }
 
