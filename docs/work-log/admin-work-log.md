@@ -17,9 +17,11 @@
 ### 테스트 결과
 - `npx.cmd tsc --noEmit` 성공.
 - `npm.cmd run build` 성공.
+- GitHub `main` 반영 후 Vercel 배포 화면에서 확인했습니다.
+- `/login?next=%2Fadmin` 로그인 화면에 `AI Talk Talk Beta` 로고와 Claude, GPT, Gemini 캐릭터 이미지가 함께 표시되는 것을 확인했습니다.
 
 ### 남은 이슈
-- Vercel 배포 후 로그인 화면에서 캐릭터 이미지가 잘리지 않고 자연스럽게 보이는지 확인해야 합니다.
+- 없음.
 
 ---
 
