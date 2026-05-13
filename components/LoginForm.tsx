@@ -132,8 +132,12 @@ export function LoginForm() {
       <section className="login-card">
         <div className="login-brand-block">
           <div className="login-brand-title">
-            <h1>AI Talk Talk</h1>
-            <span>Beta</span>
+            <img
+              src="/images/ai-talk-login-logo.png"
+              alt="AI Talk Talk Beta"
+              className="login-brand-logo"
+              draggable={false}
+            />
           </div>
           <p>AI와 함께 자유롭게 이야기해보세요.</p>
         </div>
@@ -170,12 +174,12 @@ export function LoginForm() {
 
         <form onSubmit={submitLogin} className="login-form">
           <label>
-            <span>아이디</span>
             <div className="login-input-shell">
               <UserRound size={22} aria-hidden="true" />
               <input
                 value={id}
                 onChange={(event) => setId(event.target.value)}
+                aria-label="아이디"
                 autoComplete="username"
                 placeholder="아이디를 입력하세요"
               />
@@ -183,12 +187,12 @@ export function LoginForm() {
           </label>
 
           <label>
-            <span>비밀번호</span>
             <div className="login-input-shell">
               <LockKeyhole size={22} aria-hidden="true" />
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                aria-label="비밀번호"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="비밀번호를 입력하세요"
