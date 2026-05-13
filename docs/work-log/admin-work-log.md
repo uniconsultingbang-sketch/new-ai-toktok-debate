@@ -1,5 +1,28 @@
 # 어드민 작업 로그
 
+## 2026-05-13 - 어드민 로그인 캐릭터 이미지 추가
+
+### 수정한 파일
+- `components/LoginForm.tsx`
+- `components/AdminLogin.module.css`
+- `public/images/ai-talk-talk-admin-characters.png`
+- `docs/work-log/admin-work-log.md`
+
+### 구현한 기능
+- 방실장님이 전달한 Claude, GPT, Gemini 캐릭터 이미지를 투명 영역 기준으로 잘라 로그인 화면용 이미지로 추가했습니다.
+- 어드민 로그인 화면에서 새 로고 아래에 캐릭터 이미지를 배치해 카드 내부 빈 공간이 덜 느껴지도록 조정했습니다.
+- 이미지가 너무 무겁지 않도록 표시용 크기로 줄여 저장했습니다.
+- 로고, 캐릭터 이미지, Admin Console 문구, 입력 폼 사이의 여백을 다시 조정했습니다.
+
+### 테스트 결과
+- `npx.cmd tsc --noEmit` 성공.
+- `npm.cmd run build` 성공.
+
+### 남은 이슈
+- Vercel 배포 후 로그인 화면에서 캐릭터 이미지가 잘리지 않고 자연스럽게 보이는지 확인해야 합니다.
+
+---
+
 ## 2026-05-13 - 어드민 로고 교체
 
 ### 수정한 파일

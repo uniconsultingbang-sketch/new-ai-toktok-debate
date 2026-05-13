@@ -69,6 +69,11 @@ export function LoginForm() {
           <h1 id="admin-login-title" className={styles.srOnly}>
             AI Talk Talk
           </h1>
+          <img
+            className={styles.characterHero}
+            src="/images/ai-talk-talk-admin-characters.png"
+            alt="Claude, GPT, Gemini 캐릭터"
+          />
           <p className={styles.subtitle}>Admin Console</p>
           <div className={styles.divider} />
           <p className={styles.description}>관리자 계정으로 로그인하세요.</p>

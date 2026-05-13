@@ -81,7 +81,7 @@
     0 30px 80px rgba(42, 62, 101, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(18px);
-  padding: 84px 72px 78px;
+  padding: 62px 72px 64px;
   text-align: center;
 }
 
@@ -103,8 +103,17 @@
   white-space: nowrap;
 }
 
+.characterHero {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 18px auto 0;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 26px rgba(57, 72, 120, 0.13));
+}
+
 .subtitle {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: #64708a;
   font-size: 21px;
   font-weight: 450;
@@ -272,11 +281,16 @@
   }
 
   .card {
-    padding: 48px 28px 42px;
+    padding: 38px 28px 38px;
   }
 
   .brandLogo {
     width: min(100%, 300px);
+  }
+
+  .characterHero {
+    width: min(100%, 330px);
+    margin-top: 14px;
   }
 
   .subtitle {
@@ -311,15 +325,20 @@
   }
 
   .card {
-    padding: 48px 72px 44px;
+    padding: 34px 72px 36px;
   }
 
   .brandLogo {
     width: min(100%, 300px);
   }
 
-  .subtitle {
+  .characterHero {
+    width: min(100%, 360px);
     margin-top: 12px;
+  }
+
+  .subtitle {
+    margin-top: 8px;
     font-size: 18px;
   }
 
