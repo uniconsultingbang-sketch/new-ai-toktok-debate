@@ -3943,3 +3943,12 @@ body {
 
 @media (max-height: 760px) {
   .login-card {
+    justify-content: flex-start;
+    padding-top: max(34px, calc(env(safe-area-inset-top) + 18px));
+  }
+
+  .login-input-shell input,
+  .login-input-shell input::placeholder {
+    font-size: 15px;
+  }
+}
