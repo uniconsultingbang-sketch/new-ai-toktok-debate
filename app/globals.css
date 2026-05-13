@@ -3893,3 +3893,53 @@ body {
     padding: 11px 13px;
   }
 }
+
+/* v0.5.6 mobile login balance: optical vertical centering, softer input type, ambient tri-color glow. */
+.login-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background:
+    linear-gradient(180deg, #fbfcff 0%, #f7f8ff 50%, #f5f5f8 100%);
+}
+
+.login-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 34%, rgba(255, 203, 125, 0.24), transparent 31%),
+    radial-gradient(circle at 52% 31%, rgba(154, 235, 222, 0.26), transparent 32%),
+    radial-gradient(circle at 86% 33%, rgba(177, 164, 255, 0.26), transparent 34%),
+    radial-gradient(circle at 50% 0%, rgba(235, 245, 255, 0.62), transparent 38%);
+  opacity: 0.88;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: max(48px, calc(env(safe-area-inset-top) + 28px));
+  padding-bottom: calc(max(28px, env(safe-area-inset-bottom)) + 18px);
+}
+
+.login-brand-block {
+  margin-top: 0;
+}
+
+.login-input-shell input {
+  font-size: 16px;
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.login-input-shell input::placeholder {
+  font-size: 16px;
+}
+
+@media (max-height: 760px) {
+  .login-card {
