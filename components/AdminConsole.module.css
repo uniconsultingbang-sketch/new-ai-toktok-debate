@@ -20,29 +20,26 @@
 }
 
 .brandBlock {
-  display: grid;
-  grid-template-columns: 66px 1fr;
-  gap: 9px;
+  display: flex;
+  width: 100%;
+  min-height: 42px;
   align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
 }
 
 .brandBlock img {
   display: block;
-  width: 66px;
+  width: 142px;
+  max-width: 100%;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(37, 50, 116, 0.12));
 }
 
-.brandBlock strong {
-  display: block;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 680;
-  line-height: 1.25;
-}
-
-.brandBlock small,
 .sidebarFooter span,
 .navItem small,
 .topbar p,
@@ -307,10 +304,14 @@
 .statCard {
   min-height: 104px;
   display: grid;
-  grid-template-columns: 46px 1fr;
+  grid-template-columns: 46px minmax(0, 1fr);
   gap: 14px;
   align-items: center;
   padding: 17px;
+}
+
+.statCard section {
+  min-width: 0;
 }
 
 .statCard > div,
@@ -337,9 +338,11 @@
   display: block;
   margin-top: 5px;
   color: #111827;
-  font-size: 24px;
+  font-size: clamp(18px, 1.25vw, 24px);
   line-height: 1.1;
   font-weight: 680;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .statCard small {
@@ -507,6 +510,126 @@
 .legendGray { background: #c8d0dd; }
 .legendNavy { background: #3159b8; }
 
+.statusSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statusMetricCard {
+  min-height: 88px;
+  display: grid;
+  align-content: center;
+  border: 1px solid #e7ecf5;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 12px;
+}
+
+.statusMetricCard span {
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.statusMetricCard strong {
+  margin-top: 6px;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 680;
+}
+
+.statusMetricCard em {
+  margin-top: 7px;
+  color: #667085;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.statusMetricCard.completed { border-color: #ccebdc; background: #f6fdf9; }
+.statusMetricCard.running { border-color: #cfe0ff; background: #f7fbff; }
+.statusMetricCard.failed { border-color: #ffd7d7; background: #fffafa; }
+.statusMetricCard.paused { border-color: #e3e8f0; background: #fbfcff; }
+
+.providerSummary {
+  display: grid;
+  gap: 10px;
+}
+
+.providerBarRow {
+  display: grid;
+  grid-template-columns: 124px minmax(140px, 1fr) minmax(120px, 0.8fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e7ecf5;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 10px 12px;
+}
+
+.providerIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.providerIdentity strong {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.providerMark {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #3159b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.providerTokenInfo {
+  display: grid;
+  gap: 2px;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.providerTokenInfo small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.providerBarTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf6;
+}
+
+.providerBarTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fb2ff, #3b72e7);
+}
+
+.providerBarRow em {
+  color: #111827;
+  white-space: nowrap;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+}
+
 .donutEmpty,
 .barEmpty {
   min-height: 126px;
@@ -572,25 +695,32 @@
 
 .infoPanel {
   display: grid;
-  align-content: center;
-  padding: 26px;
+  align-content: stretch;
+  gap: 16px;
+  padding: 22px;
+}
+
+.infoPanelHeader {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 16px;
+  align-items: center;
 }
 
 .infoIllustration {
-  width: 132px;
-  height: 92px;
+  width: 92px;
+  height: 70px;
   display: flex;
   align-items: end;
-  gap: 9px;
+  gap: 7px;
   border: 5px solid #dbe7ff;
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
-  padding: 18px 18px 0;
-  margin-bottom: 18px;
+  padding: 13px 13px 0;
 }
 
 .infoIllustration span {
-  width: 16px;
+  width: 12px;
   border-radius: 4px 4px 0 0;
   background: linear-gradient(180deg, #b6ccff, #4f7ff0);
 }
@@ -607,12 +737,41 @@
   font-weight: 650;
 }
 
-.infoPanel > p {
+.infoPanel p {
   margin: 8px 0 16px;
   max-width: 260px;
   color: #667085;
   font-size: 12px;
   line-height: 1.65;
+}
+
+.infoMetricList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.infoMetricList div {
+  border: 1px solid #e7ecf5;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 10px 12px;
+}
+
+.infoMetricList span {
+  display: block;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.infoMetricList strong {
+  display: block;
+  margin-top: 5px;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 1.4;
 }
 
 .infoNote,
@@ -660,7 +819,6 @@
 }
 
 .compactRow strong,
-.recordItem strong,
 .costCard strong {
   display: block;
   overflow: hidden;
@@ -670,6 +828,16 @@
   font-size: 12px;
   font-weight: 560;
   line-height: 1.4;
+}
+
+.recordItem strong {
+  display: block;
+  overflow: visible;
+  color: #111827;
+  white-space: normal;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.45;
 }
 
 .compactRow small,
@@ -792,25 +960,6 @@
 .tableRow strong {
   color: #111827;
   font-weight: 560;
-}
-
-.titleList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 9px;
-}
-
-.titleList span {
-  display: inline-flex;
-  min-height: 22px;
-  align-items: center;
-  border-radius: 999px;
-  background: #f8fafd;
-  padding: 0 8px;
-  color: #475467;
-  font-size: 11px;
-  font-weight: 400;
 }
 
 .costHero {
@@ -980,6 +1129,12 @@
   color: #e45454;
 }
 
+.recordActions select:disabled,
+.recordActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .pagination,
 .paginationMeta {
   margin-top: 12px;
@@ -1034,6 +1189,8 @@
   font-size: 15px;
   line-height: 1.45;
   font-weight: 620;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .detailBox dl div {
@@ -1205,7 +1362,14 @@
   .recordCostGrid,
   .pricingGrid,
   .costHero,
-  .attentionGrid {
+  .attentionGrid,
+  .statusSummary,
+  .infoMetricList,
+  .providerBarRow {
+    grid-template-columns: 1fr;
+  }
+
+  .infoPanelHeader {
     grid-template-columns: 1fr;
   }
 

@@ -25,7 +25,6 @@ import {
 import {
   DecisionRecord,
   DecisionStatus,
-  deleteDecisionAsync,
   formatDecisionDate,
   getTopicLabel,
   loadDecisionsAsync,
@@ -243,6 +242,11 @@ export function AdminConsole() {
     return Array.from(totals.values()).sort((a, b) => b.costUsd - a.costUsd);
   }, [scopedUsage]);
 
+  const activeFilterLabel = useMemo(() => {
+    const owner = ownerFilter === "all" ? "전체 사용자" : ownerFilter;
+    return `${owner} · ${periodLabel(periodFilter)}`;
+  }, [ownerFilter, periodFilter]);
+
   const selectedUsage =
     filteredUsage.find((usage) => usage.decision.id === selectedId) ?? filteredUsage[0] ?? null;
 
@@ -281,16 +285,26 @@ export function AdminConsole() {
   }
 
   async function deleteDecision(decision: DecisionRecord) {
-    const shouldDelete = window.confirm(`"${decision.title}" 기록을 관리자 목록에서 삭제할까요?`);
+    const shouldDelete = window.confirm(
+      `"${decision.title}" 기록을 사용자 화면에서 숨길까요?\n\n어드민 비용 계산에는 삭제 상태로 계속 남습니다.`,
+    );
 
     if (!shouldDelete) {
       return;
     }
 
-    setDecisions((current) => current.filter((item) => item.id !== decision.id));
-    setSelectedId((current) => (current === decision.id ? null : current));
-    setNotice(`"${decision.title}" 기록을 삭제했습니다.`);
-    await deleteDecisionAsync(decision.id, decision.ownerId ?? null);
+    const deletedAt = new Date().toISOString();
+    const updated: DecisionRecord = {
+      ...decision,
+      deletedAt,
+      deletedBy: "admin",
+      updatedAt: deletedAt,
+    };
+
+    setDecisions((current) => current.map((item) => (item.id === decision.id ? updated : item)));
+    setSelectedId(decision.id);
+    setNotice(`"${decision.title}" 기록을 사용자 화면에서 숨겼습니다. 어드민 비용 계산에는 포함됩니다.`);
+    await saveDecisionAsync(updated, decision.ownerId ?? null);
   }
 
   async function logoutAdmin() {
@@ -323,13 +337,17 @@ export function AdminConsole() {
   return (
     <main className={styles.page}>
       <aside className={styles.sidebar}>
-        <div className={styles.brandBlock}>
+        <button
+          className={styles.brandBlock}
+          type="button"
+          onClick={() => {
+            setActiveTab("dashboard");
+            setQuery("");
+          }}
+          aria-label="전체 대시보드로 이동"
+        >
           <img src="/images/ai-talk-talk-logo-beta.png" alt="AI Talk Talk Beta" />
-          <div>
-            <strong>AI Talk Talk</strong>
-            <small>Admin Console</small>
-          </div>
-        </div>
+        </button>
 
         <label className={styles.sidebarSearch}>
           <Search size={15} />
@@ -415,6 +433,7 @@ export function AdminConsole() {
             dashboard={dashboard}
             providerTotals={providerTotals}
             userSummaries={userSummaries}
+            activeFilterLabel={activeFilterLabel}
           />
         ) : null}
 
@@ -425,18 +444,13 @@ export function AdminConsole() {
         ) : null}
 
         {activeTab === "records" ? (
-          <>
-            <section className={styles.recordsSummaryBand}>
-              <UserTokenSummaryPanel userSummaries={userSummaries} />
-            </section>
-            <RecordsView
-              filteredUsage={filteredUsage}
-              selectedUsage={selectedUsage}
-              onSelect={(id) => setSelectedId(id)}
-              onStatusChange={(decision, status) => void changeDecisionStatus(decision, status)}
-              onDelete={(decision) => void deleteDecision(decision)}
-            />
-          </>
+          <RecordsView
+            filteredUsage={filteredUsage}
+            selectedUsage={selectedUsage}
+            onSelect={(id) => setSelectedId(id)}
+            onStatusChange={(decision, status) => void changeDecisionStatus(decision, status)}
+            onDelete={(decision) => void deleteDecision(decision)}
+          />
         ) : null}
 
         {activeTab === "pricing" ? (
@@ -455,6 +469,7 @@ function DashboardView({
   dashboard,
   providerTotals,
   userSummaries,
+  activeFilterLabel,
 }: {
   dashboard: {
     total: number;
@@ -469,6 +484,7 @@ function DashboardView({
   };
   providerTotals: CostBreakdown[];
   userSummaries: UserUsageSummary[];
+  activeFilterLabel: string;
 }) {
   return (
     <>
@@ -478,7 +494,7 @@ function DashboardView({
         <StatCard icon={<CheckCircle2 size={22} />} label="완료 수" value={`${dashboard.completed}`} helper="정상 완료된 토론" tone="green" />
         <StatCard icon={<AlertTriangle size={22} />} label="오류 수" value={`${dashboard.failed}`} helper="오류로 종료된 토론" tone="red" />
         <StatCard icon={<BarChart3 size={22} />} label="추정 토큰" value={formatNumber(dashboard.totalTokens)} helper="전체 추정 토큰 수" tone="blue" />
-        <StatCard icon={<Coins size={22} />} label="추정 비용" value={formatCost(dashboard.totalCost)} helper="전체 추정 비용" tone="yellow" />
+        <StatCard icon={<Coins size={22} />} label="추정 비용" value={formatCost(dashboard.totalCost).replace(" (", "\n(")} helper="전체 추정 비용" tone="yellow" />
       </section>
 
       <section className={styles.dashboardTopGrid}>
@@ -502,23 +518,39 @@ function DashboardView({
         </Panel>
 
         <Panel title="" label="" className={styles.infoPanel}>
-          <div className={styles.infoIllustration}>
-            <span />
-            <span />
-            <span />
+          <div className={styles.infoPanelHeader}>
+            <div className={styles.infoIllustration}>
+              <span />
+              <span />
+              <span />
+            </div>
+            <div>
+              <h2>운영 기준 요약</h2>
+              <p>현재 화면에 적용된 기준과 어드민 정책입니다.</p>
+            </div>
           </div>
-          <h2>서비스 현황을 한눈에</h2>
-          <p>AI Talk Talk의 사용 현황과 비용을 보다 쉽게 관리하세요.</p>
-          <div className={styles.infoNote}>
-            <strong>안내</strong>
-            <span>기존 기록은 실제 토큰 데이터가 없어 추정치로 표시됩니다.</span>
-            <span>요금 계산 설정은 원화 환산 비용의 기준입니다.</span>
+          <div className={styles.infoMetricList}>
+            <div>
+              <span>현재 필터</span>
+              <strong>{activeFilterLabel}</strong>
+            </div>
+            <div>
+              <span>삭제 기록</span>
+              <strong>비용 계산 포함</strong>
+            </div>
+            <div>
+              <span>사용자 입력 본문</span>
+              <strong>관리자 화면 미노출</strong>
+            </div>
+            <div>
+              <span>비용 기준</span>
+              <strong>원화 우선 · 달러 보조</strong>
+            </div>
           </div>
         </Panel>
       </section>
 
       <section className={styles.dashboardMainGrid}>
-        <UserTokenSummaryPanel userSummaries={userSummaries} />
         <UsersView userSummaries={userSummaries} />
         <Panel title="운영 주의 항목" label="Attention">
           <div className={styles.attentionGrid}>
@@ -548,33 +580,22 @@ function StatusSummary({
     return <DonutEmpty title="아직 데이터가 없습니다." description="토론 기록이 생성되면 상태 분포가 표시됩니다." />;
   }
 
-  const completed = Math.max(0, Math.round((dashboard.completed / dashboard.total) * 100));
-  const running = Math.max(0, Math.round((dashboard.running / dashboard.total) * 100));
-  const failed = Math.max(0, Math.round((dashboard.failed / dashboard.total) * 100));
-  const paused = Math.max(0, 100 - completed - running - failed);
+  const statusItems = [
+    { label: "완료", value: dashboard.completed, tone: "completed" },
+    { label: "진행중", value: dashboard.running, tone: "running" },
+    { label: "오류", value: dashboard.failed, tone: "failed" },
+    { label: "대기", value: dashboard.paused, tone: "paused" },
+  ];
 
   return (
     <div className={styles.statusSummary}>
-      <div
-        className={styles.statusDonut}
-        style={{
-          background: `conic-gradient(#3b72e7 0 ${completed}%, #7aa7ff ${completed}% ${
-            completed + running
-          }%, #e45454 ${completed + running}% ${completed + running + failed}%, #c8d0dd ${
-            completed + running + failed
-          }% 100%)`,
-        }}
-        aria-label={`완료 ${dashboard.completed}건, 진행중 ${dashboard.running}건, 오류 ${dashboard.failed}건, 대기 ${dashboard.paused}건`}
-      >
-        <strong>{dashboard.total}</strong>
-        <span>건</span>
-      </div>
-      <div className={styles.statusMetricGrid}>
-        <span>완료 <strong>{dashboard.completed}</strong></span>
-        <span>진행중 <strong>{dashboard.running}</strong></span>
-        <span>오류 <strong>{dashboard.failed}</strong></span>
-        <span>대기 <strong>{dashboard.paused}</strong></span>
-      </div>
+      {statusItems.map((item) => (
+        <div className={`${styles.statusMetricCard} ${styles[item.tone]}`} key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}건</strong>
+          <em>{dashboard.total ? Math.round((item.value / dashboard.total) * 100) : 0}%</em>
+        </div>
+      ))}
     </div>
   );
 }
@@ -590,9 +611,15 @@ function ProviderCostSummary({ providerTotals }: { providerTotals: CostBreakdown
     <div className={styles.providerSummary}>
       {providerTotals.map((item) => (
         <div className={styles.providerBarRow} key={`${item.provider}-${item.model}`}>
-          <div>
+          <div className={styles.providerIdentity}>
+            <span className={styles.providerMark}>{item.provider.slice(0, 1)}</span>
             <strong>{item.provider}</strong>
+          </div>
+          <div className={styles.providerTokenInfo}>
             <span>{formatNumber(item.totalTokens)} tokens</span>
+            <small>
+              입력 {formatNumber(item.inputTokens)} · 출력 {formatNumber(item.outputTokens)}
+            </small>
           </div>
           <div className={styles.providerBarTrack}>
             <span style={{ width: `${Math.max(8, (item.costUsd / maxCost) * 100)}%` }} />
@@ -653,17 +680,8 @@ function UsersView({ userSummaries }: { userSummaries: UserUsageSummary[] }) {
               <strong>{user.ownerId}</strong>
               <span>{user.topicCount}건</span>
               <span>{user.dates.join(", ") || "-"}</span>
-              <span className={styles.muted}>본문 내용 미표시</span>
+              <span>{summarizeUserTitles(user.records)}</span>
               <em>{formatCost(user.costUsd)}</em>
-            </div>
-            <div className={styles.titleList}>
-              {user.records.slice(0, PAGE_SIZE).map(({ decision, costUsd }) => (
-                <span key={decision.id}>
-                  {decision.title || "제목 없는 토론"} · {formatDecisionDate(decision.createdAt)} ·{" "}
-                  {recordStatusLabel(decision)} · {formatCost(costUsd)}
-                </span>
-              ))}
-              {user.records.length > PAGE_SIZE ? <span>외 {user.records.length - PAGE_SIZE}건</span> : null}
             </div>
           </div>
         ))}
@@ -844,6 +862,7 @@ function RecordsView({
                 <div className={styles.recordActions}>
                   <select
                     value={decision.status}
+                    disabled={Boolean(decision.deletedAt)}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => onStatusChange(decision, event.target.value as DecisionStatus)}
                     aria-label="토론 상태 변경"
@@ -855,11 +874,13 @@ function RecordsView({
                   </select>
                   <button
                     type="button"
+                    disabled={Boolean(decision.deletedAt)}
                     onClick={(event) => {
                       event.stopPropagation();
                       onDelete(decision);
                     }}
-                    aria-label="토론 기록 삭제"
+                    aria-label="사용자 화면에서 숨기기"
+                    title="사용자 화면에서 숨기기"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -905,7 +926,7 @@ function RecordsView({
                 <dt>삭제 상태</dt>
                 <dd>
                   {selectedUsage.decision.deletedAt
-                    ? `사용자 화면에서 삭제됨 · ${formatDecisionDate(selectedUsage.decision.deletedAt)}`
+                    ? `${selectedUsage.decision.deletedBy === "admin" ? "관리자 숨김 처리" : "사용자 화면에서 삭제됨"} · ${formatDecisionDate(selectedUsage.decision.deletedAt)}`
                     : "사용자 화면에 표시 중"}
                 </dd>
               </div>
@@ -1275,6 +1296,15 @@ function buildUserSummaries(usageSummaries: DecisionUsageSummary[]): UserUsageSu
   return Array.from(users.values()).sort((a, b) => b.topicCount - a.topicCount);
 }
 
+function summarizeUserTitles(records: DecisionUsageSummary[]) {
+  if (!records.length) {
+    return "-";
+  }
+
+  const latestTitle = records[0].decision.title || "제목 없는 토론";
+  return records.length > 1 ? `${latestTitle} 외 ${records.length - 1}건` : latestTitle;
+}
+
 function estimateTokens(value: string) {
   const normalized = value.trim();
 
@@ -1360,6 +1390,13 @@ function formatShortDate(value: string) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function periodLabel(period: PeriodFilter) {
+  if (period === "today") return "오늘";
+  if (period === "7d") return "최근 7일";
+  if (period === "30d") return "최근 30일";
+  return "전체 기간";
 }
 
 function formatNumber(value: number) {
