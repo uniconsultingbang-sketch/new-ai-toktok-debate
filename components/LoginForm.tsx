@@ -65,10 +65,10 @@ export function LoginForm() {
         <div className={styles.rightCurve} aria-hidden="true" />
 
         <section className={styles.card} aria-labelledby="admin-login-title">
-          <div className={styles.logo} aria-hidden="true">
-            A
-          </div>
-          <h1 id="admin-login-title">AI Talk Talk</h1>
+          <img className={styles.brandLogo} src="/images/ai-talk-talk-logo-beta.png" alt="AI Talk Talk Beta" />
+          <h1 id="admin-login-title" className={styles.srOnly}>
+            AI Talk Talk
+          </h1>
           <p className={styles.subtitle}>Admin Console</p>
           <div className={styles.divider} />
           <p className={styles.description}>관리자 계정으로 로그인하세요.</p>

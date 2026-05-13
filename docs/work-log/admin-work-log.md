@@ -1,5 +1,52 @@
 # 어드민 작업 로그
 
+## 2026-05-13 - 어드민 로고 교체
+
+### 수정한 파일
+- `components/LoginForm.tsx`
+- `components/AdminLogin.module.css`
+- `components/AdminConsole.tsx`
+- `components/AdminConsole.module.css`
+- `public/images/ai-talk-talk-logo-beta.png`
+- `docs/work-log/admin-work-log.md`
+
+### 구현한 기능
+- 방실장님이 전달한 `AI Talk Talk Beta` 로고 이미지를 어드민 로그인 화면에 적용했습니다.
+- 어드민 대시보드 왼쪽 사이드바의 기존 원형 `A` 표시를 새 로고 이미지로 교체했습니다.
+- 로그인 화면에서는 로고가 중심 시각 요소로 보이도록 크기, 여백, 그림자를 조정했습니다.
+- 대시보드 사이드바에서는 좁은 메뉴 폭에 맞게 작은 가로 로고로 표시되도록 조정했습니다.
+
+### 테스트 결과
+- `npx.cmd tsc --noEmit` 성공.
+- `npm.cmd run build` 성공.
+
+### 남은 이슈
+- Vercel 배포 후 로그인 화면과 대시보드에서 새 로고가 깨지지 않고 보이는지 확인해야 합니다.
+
+---
+
+## 2026-05-13 - 대시보드 등록 사용자 수 표시 수정
+
+### 수정한 파일
+- `components/AdminConsole.tsx`
+- `docs/work-log/admin-work-log.md`
+
+### 구현한 기능
+- 전체 대시보드의 `사용자 수` 카드를 토론 기록이 있는 사용자 수가 아니라 등록된 전체 사용자 수 기준으로 표시하도록 수정했습니다.
+- 현재 AI Talk Talk 등록 계정은 `demo01`, `demo02`, `demo03` 총 3명이므로 대시보드에는 `3`으로 표시됩니다.
+- 사용자별 사용량 화면은 기존처럼 실제 토론 기록이 있는 사용자 기준으로 유지했습니다.
+- 어드민 사이드바 로그인 사용자 표시를 이름값이 아니라 계정 ID 기준으로 표시하도록 변경했습니다. 배포 환경의 이름 설정이 잘못 붙어 있어도 `demo03demo01`처럼 보이지 않고 `demo03`으로 보입니다.
+
+### 테스트 결과
+- `npx.cmd tsc --noEmit` 성공.
+- `npm.cmd run build` 성공.
+
+### 남은 이슈
+- Vercel 배포 후 어드민 대시보드에서 사용자 수가 `3`으로 보이는지 확인해야 합니다.
+- Vercel 배포 후 어드민 사이드바 로그인 표시가 `demo03`으로 보이는지 확인해야 합니다.
+
+---
+
 ## 2026-05-13 - 어드민 로그인 계정 제한 흐름 수정
 
 ### 수정한 파일

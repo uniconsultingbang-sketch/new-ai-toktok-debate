@@ -82,6 +82,7 @@ type UserUsageSummary = {
 
 const PRICING_STORAGE_KEY = "aiTalkTalkAdminPricingConfig";
 const USD_TO_KRW = 1400;
+const REGISTERED_USER_COUNT = 3;
 
 const defaultPricing: PricingConfig = {
   openai: {
@@ -176,7 +177,6 @@ export function AdminConsole() {
     const running = decisions.filter((decision) => decision.status === "running").length;
     const failed = decisions.filter((decision) => decision.status === "failed").length;
     const paused = decisions.filter((decision) => decision.status === "paused").length;
-    const owners = new Set(decisions.map((decision) => ownerLabel(decision.ownerId)));
     const totalTokens = usageSummaries.reduce((sum, item) => sum + item.totalTokens, 0);
     const totalCost = usageSummaries.reduce((sum, item) => sum + item.costUsd, 0);
 
@@ -186,7 +186,7 @@ export function AdminConsole() {
       running,
       failed,
       paused,
-      owners: owners.size,
+      owners: REGISTERED_USER_COUNT,
       totalTokens,
       totalCost,
     };
@@ -315,7 +315,7 @@ export function AdminConsole() {
     <main className={styles.page}>
       <aside className={styles.sidebar}>
         <div className={styles.brandBlock}>
-          <span>A</span>
+          <img src="/images/ai-talk-talk-logo-beta.png" alt="AI Talk Talk Beta" />
           <div>
             <strong>AI Talk Talk</strong>
             <small>Admin Console</small>
@@ -349,7 +349,7 @@ export function AdminConsole() {
             <ShieldCheck size={16} />
             <div>
               <strong>{auth?.configured ? "관리자 로그인" : "로컬 테스트"}</strong>
-              <span>{auth?.user?.name ?? "관리자 화면"}</span>
+              <span>{auth?.user?.id ?? "관리자 화면"}</span>
             </div>
           </div>
           {auth?.configured ? (

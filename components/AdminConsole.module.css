@@ -21,22 +21,17 @@
 
 .brandBlock {
   display: grid;
-  grid-template-columns: 30px 1fr;
-  gap: 10px;
+  grid-template-columns: 66px 1fr;
+  gap: 9px;
   align-items: center;
 }
 
-.brandBlock > span {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #4b7ff2, #2f63d6);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
+.brandBlock img {
+  display: block;
+  width: 66px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(37, 50, 116, 0.12));
 }
 
 .brandBlock strong {
