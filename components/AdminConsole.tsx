@@ -410,15 +410,20 @@ export function AdminConsole() {
         ) : null}
 
         {activeTab === "records" ? (
-          <RecordsView
-            filteredUsage={filteredUsage}
-            selectedUsage={selectedUsage}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            onSelect={(id) => setSelectedId(id)}
-            onStatusChange={(decision, status) => void changeDecisionStatus(decision, status)}
-            onDelete={(decision) => void deleteDecision(decision)}
-          />
+          <>
+            <section className={styles.recordsSummaryBand}>
+              <UserTokenSummaryPanel userSummaries={userSummaries} />
+            </section>
+            <RecordsView
+              filteredUsage={filteredUsage}
+              selectedUsage={selectedUsage}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              onSelect={(id) => setSelectedId(id)}
+              onStatusChange={(decision, status) => void changeDecisionStatus(decision, status)}
+              onDelete={(decision) => void deleteDecision(decision)}
+            />
+          </>
         ) : null}
 
         {activeTab === "pricing" ? (
@@ -465,6 +470,10 @@ function DashboardView({
   onPricingChange: (providerKey: keyof PricingConfig, field: keyof PricingConfig[keyof PricingConfig], value: string) => void;
   onResetPricing: () => void;
 }) {
+  const [dashboardSelectedId, setDashboardSelectedId] = useState<string | null>(null);
+  const dashboardSelectedUsage =
+    recentUsage.find((usage) => usage.decision.id === dashboardSelectedId) ?? recentUsage[0] ?? null;
+
   return (
     <>
       <section className={styles.statGrid}>
@@ -513,14 +522,15 @@ function DashboardView({
       </section>
 
       <section className={styles.dashboardMainGrid}>
+        <UserTokenSummaryPanel userSummaries={userSummaries} />
         <UsersView userSummaries={userSummaries} />
         <CostsView dashboard={dashboard} providerTotals={providerTotals} usageSummaries={filteredUsage} compact />
         <RecordsView
           filteredUsage={filteredUsage}
-          selectedUsage={recentUsage[0] ?? null}
+          selectedUsage={dashboardSelectedUsage}
           statusFilter={statusFilter}
           onStatusFilterChange={onStatusFilterChange}
-          onSelect={() => undefined}
+          onSelect={setDashboardSelectedId}
           onStatusChange={() => undefined}
           onDelete={() => undefined}
           readOnly
@@ -528,6 +538,38 @@ function DashboardView({
         <PricingView pricing={pricing} onPricingChange={onPricingChange} onReset={onResetPricing} compact />
       </section>
     </>
+  );
+}
+
+function UserTokenSummaryPanel({ userSummaries }: { userSummaries: UserUsageSummary[] }) {
+  return (
+    <Panel title="사용자별 토큰/비용" label="User Tokens" count={`${userSummaries.length}명`}>
+      <div className={styles.userTokenTable}>
+        <div className={styles.userTokenHead}>
+          <span>사용자</span>
+          <span>토론 수</span>
+          <span>추정 토큰</span>
+          <span>추정 비용</span>
+          <span>최근 입력일</span>
+        </div>
+        {userSummaries.map((user) => (
+          <div className={styles.userTokenRow} key={user.ownerId}>
+            <strong>{user.ownerId}</strong>
+            <span>{user.topicCount}건</span>
+            <span>{formatNumber(user.totalTokens)} tokens</span>
+            <em>{formatCost(user.costUsd)}</em>
+            <span>{user.dates[0] ?? "-"}</span>
+          </div>
+        ))}
+        {!userSummaries.length ? (
+          <TableEmptyRow
+            columns={5}
+            title="아직 사용자별 토큰 기록이 없습니다."
+            description="토론 기록이 생성되면 사용자별 추정 토큰과 비용이 여기에 표시됩니다."
+          />
+        ) : null}
+      </div>
+    </Panel>
   );
 }
 
@@ -603,6 +645,8 @@ function CostsView({
           확장할 수 있습니다.
         </p>
       </Panel>
+
+      <UserTokenSummaryPanel userSummaries={buildUserSummaries(usageSummaries)} />
 
       <Panel title="모델별 합계" label="Models">
         <div className={styles.compactRows}>
@@ -704,6 +748,7 @@ function RecordsView({
             <article
               className={`${styles.recordItem} ${selectedUsage?.decision.id === decision.id ? styles.recordItemActive : ""}`}
               key={decision.id}
+              onClick={() => onSelect(decision.id)}
             >
               <button type="button" onClick={() => onSelect(decision.id)}>
                 <span className={`${styles.statusBadge} ${styles[decision.deletedAt ? "deleted" : decision.status]}`}>
@@ -720,6 +765,7 @@ function RecordsView({
                 <div className={styles.recordActions}>
                   <select
                     value={decision.status}
+                    onClick={(event) => event.stopPropagation()}
                     onChange={(event) => onStatusChange(decision, event.target.value as DecisionStatus)}
                     aria-label="토론 상태 변경"
                   >
@@ -728,7 +774,14 @@ function RecordsView({
                     <option value="failed">오류</option>
                     <option value="paused">중단</option>
                   </select>
-                  <button type="button" onClick={() => onDelete(decision)} aria-label="토론 기록 삭제">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(decision);
+                    }}
+                    aria-label="토론 기록 삭제"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>

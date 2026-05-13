@@ -357,6 +357,10 @@
   margin-top: 16px;
 }
 
+.recordsSummaryBand {
+  margin-top: 16px;
+}
+
 .twoColumn,
 .recordsLayout {
   display: grid;
@@ -654,6 +658,49 @@
   overflow: hidden;
 }
 
+.userTokenTable {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #e7ecf5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.userTokenHead,
+.userTokenRow {
+  display: grid;
+  grid-template-columns: 1fr 82px 130px 126px 128px;
+  gap: 10px;
+  align-items: center;
+}
+
+.userTokenHead {
+  background: #f8fafd;
+  padding: 10px 12px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 560;
+}
+
+.userTokenRow {
+  border-top: 1px solid #e7ecf5;
+  padding: 11px 12px;
+  color: #475467;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.userTokenRow strong {
+  color: #111827;
+  font-weight: 580;
+}
+
+.userTokenRow em {
+  color: #111827;
+  font-style: normal;
+  font-weight: 620;
+}
+
 .tableHead,
 .tableRow {
   display: grid;
@@ -808,6 +855,11 @@
   border-radius: 8px;
   background: #fff;
   padding: 10px 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
 }
 
 .recordItemActive {
@@ -815,7 +867,13 @@
   box-shadow: 0 0 0 3px rgba(59, 114, 231, 0.08);
 }
 
+.recordItem:hover {
+  border-color: #cddcff;
+  background: #fbfdff;
+}
+
 .recordItem > button {
+  cursor: pointer;
   min-width: 0;
   display: grid;
   justify-items: start;
@@ -1040,11 +1098,13 @@
   }
 
   .tableHead,
+  .userTokenHead,
   .costTableHead {
     display: none;
   }
 
   .tableRow,
+  .userTokenRow,
   .recordItem {
     grid-template-columns: 1fr;
   }
