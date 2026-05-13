@@ -1,5 +1,26 @@
 # 어드민 작업 로그
 
+## 2026-05-13 - 어드민 로그아웃 버튼 추가
+
+### 수정한 파일
+- `components/AdminConsole.tsx`
+- `components/AdminConsole.module.css`
+- `docs/work-log/admin-work-log.md`
+
+### 구현한 기능
+- 어드민 화면 사이드바 하단 계정 정보 아래에 `로그아웃` 버튼을 추가했습니다.
+- 로그아웃 버튼 클릭 시 `/api/auth/logout`을 호출한 뒤 `/login?next=/admin`으로 이동하도록 했습니다.
+- 어드민 계정 표시 문구를 `관리자 로그인`으로 정리했습니다.
+
+### 테스트 결과
+- `npm.cmd run build` 성공.
+- `npx.cmd tsc --noEmit` 성공.
+
+### 남은 이슈
+- Vercel 배포 후 실제 어드민 화면에서 로그아웃 버튼 표시와 이동을 확인해야 합니다.
+
+---
+
 ## 2026-05-13 - 어드민 로그인 화면 고도화
 
 ### 수정한 파일

@@ -13,6 +13,7 @@ import {
   FolderKanban,
   Gauge,
   Layers3,
+  LogOut,
   Loader2,
   RefreshCw,
   Search,
@@ -282,6 +283,16 @@ export function AdminConsole() {
     await deleteDecisionAsync(decision.id, decision.ownerId ?? null);
   }
 
+  async function logoutAdmin() {
+    setNotice("관리자 계정에서 로그아웃하는 중입니다.");
+
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/login?next=%2Fadmin");
+    }
+  }
+
   function updatePricing(providerKey: keyof PricingConfig, field: keyof PricingConfig[keyof PricingConfig], value: string) {
     const next: PricingConfig = {
       ...pricing,
@@ -333,11 +344,19 @@ export function AdminConsole() {
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <ShieldCheck size={16} />
-          <div>
-            <strong>{auth?.configured ? "로그인 보호" : "로컬 테스트"}</strong>
-            <span>{auth?.user?.name ?? "관리자 화면"}</span>
+          <div className={styles.adminIdentity}>
+            <ShieldCheck size={16} />
+            <div>
+              <strong>{auth?.configured ? "관리자 로그인" : "로컬 테스트"}</strong>
+              <span>{auth?.user?.name ?? "관리자 화면"}</span>
+            </div>
           </div>
+          {auth?.configured ? (
+            <button className={styles.logoutButton} type="button" onClick={() => void logoutAdmin()}>
+              <LogOut size={14} />
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </aside>
 
