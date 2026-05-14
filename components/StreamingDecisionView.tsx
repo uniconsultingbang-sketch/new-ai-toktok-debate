@@ -853,9 +853,17 @@ function FinalReportBlock({ report }: { report: FinalReport }) {
     nextActions: report.sectionLabels?.nextActions ?? "현실적인 실행 방향",
     evidenceSources: report.sectionLabels?.evidenceSources ?? "근거 자료",
   };
-  const mainClaims = report.mainClaims?.length ? report.mainClaims : report.keyReasons;
-  const agreements = report.agreements?.length ? report.agreements : report.conditions;
-  const disagreements = report.disagreements?.length ? report.disagreements : report.keyRisks;
+  const mainClaims = getFinalItems(report.mainClaims?.length ? report.mainClaims : report.keyReasons, [
+    "세 관점의 핵심 주장이 정리되면 표시됩니다.",
+  ]).slice(0, 3);
+  const agreements = getFinalItems(report.agreements?.length ? report.agreements : report.conditions, [
+    "공통으로 인정한 판단 기준이 정리되면 표시됩니다.",
+  ]);
+  const disagreements = getFinalItems(report.disagreements?.length ? report.disagreements : report.keyRisks, [
+    "의견 차이가 있는 부분이 정리되면 표시됩니다.",
+  ]);
+  const nextActions = getFinalItems(report.nextActions, ["다음 실행 방향이 정리되면 표시됩니다."]);
+  const evidenceSources = getFinalItems(report.evidenceSources, ["추가 확인 필요"]);
 
   return (
     <section className="prof-final-panel">
@@ -868,61 +876,112 @@ function FinalReportBlock({ report }: { report: FinalReport }) {
         </div>
       </div>
 
-      <article className="prof-recommend-card prof-conclusion-block is-primary">
-        <h3>한 줄 정리</h3>
-        <p>{conclusionText}</p>
-      </article>
+      <div className="prof-conclusion-stack">
+        <section className="prof-conclusion-block is-primary" aria-label="한 줄 정리">
+          <h3>한 줄 정리</h3>
+          <p className="prof-final-copy">{conclusionText}</p>
+        </section>
 
-      <div className="prof-summary-grid">
-        <SummaryCard title={labels.mainClaims} items={mainClaims} tone="blue" />
-        <SummaryCard title={labels.agreements} items={agreements} tone="gold" />
-        <SummaryCard title={labels.disagreements} items={disagreements} tone="red" />
-        <SummaryCard title={labels.nextActions} items={report.nextActions} tone="green" />
-      </div>
+        <section className="prof-conclusion-block" aria-label={labels.mainClaims}>
+          <h3>{labels.mainClaims}</h3>
+          <div className="prof-claim-list">
+            {mainClaims.map((item, index) => {
+              const claim = parseFinalClaim(item, index);
 
-      <div className="prof-source-card">
-        <h3>{labels.evidenceSources}</h3>
-        <ul>
-          {(report.evidenceSources?.length ? report.evidenceSources : ["추가 확인 필요"]).map((source) => (
-            <li key={source}>
-              {/^https?:\/\//i.test(source) ? (
-                <a href={source} target="_blank" rel="noreferrer">{source}</a>
-              ) : (
-                source
-              )}
-            </li>
-          ))}
-        </ul>
+              return (
+                <p className="prof-claim-item" key={`${claim.speaker}-${claim.text}`}>
+                  <span className={`prof-claim-name ${claim.tone}`}>{claim.speaker}</span>
+                  <span>{claim.text}</span>
+                </p>
+              );
+            })}
+          </div>
+        </section>
+
+        <FinalListBlock title={labels.agreements} items={agreements} />
+        <FinalListBlock title={labels.disagreements} items={disagreements} />
+        <FinalActionBlock title={labels.nextActions} items={nextActions} />
+        <FinalSourceBlock title={labels.evidenceSources} items={evidenceSources} />
       </div>
     </section>
   );
 }
 
-function SummaryCard({ title, items, tone }: { title: string; items: string[]; tone: "blue" | "red" | "gold" | "green" }) {
+function FinalListBlock({ title, items }: { title: string; items: string[] }) {
   return (
-    <article className={`prof-summary-card ${tone}`}>
+    <section className="prof-conclusion-block" aria-label={title}>
       <h3>{title}</h3>
-      <ul>
-        {(items.length ? items : ["토론 결과가 정리되면 이 항목에 표시됩니다."]).slice(0, 4).map((item) => (
-          <SummaryItem key={item} value={item} />
+      <ul className="prof-compact-list">
+        {items.slice(0, 4).map((item) => (
+          <li key={item}>{item}</li>
         ))}
       </ul>
-    </article>
+    </section>
   );
 }
 
-function SummaryItem({ value }: { value: string }) {
-  const match = value.match(/^(Claude|GPT|Gemini|사회자)\s*:\s*(.+)$/);
-
-  if (!match) {
-    return <li>{value}</li>;
-  }
-
+function FinalActionBlock({ title, items }: { title: string; items: string[] }) {
   return (
-    <li>
-      <strong>{match[1]}:</strong> {match[2]}
-    </li>
+    <section className="prof-conclusion-block" aria-label={title}>
+      <h3>{title}</h3>
+      <ol className="prof-step-list">
+        {items.slice(0, 4).map((item, index) => (
+          <li key={item}>
+            <span className="prof-step-num">{index + 1}</span>
+            <p>{item}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
+}
+
+function FinalSourceBlock({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="prof-conclusion-block" aria-label={title}>
+      <h3>{title}</h3>
+      <ul className="prof-source-list">
+        {items.slice(0, 5).map((source) => (
+          <li key={source}>
+            {/^https?:\/\//i.test(source) ? (
+              <a href={source} target="_blank" rel="noreferrer">
+                {source}
+              </a>
+            ) : (
+              source
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function getFinalItems(items: string[] | undefined, fallback: string[]) {
+  const normalized = (items ?? []).map((item) => item.trim()).filter(Boolean);
+
+  return normalized.length ? normalized : fallback;
+}
+
+function parseFinalClaim(value: string, index: number) {
+  const match = value.match(/^(Claude|GPT|Gemini|사회자)\s*[:：]\s*(.+)$/);
+  const fallbackSpeakers = ["Claude", "GPT", "Gemini"];
+  const speaker = match?.[1] ?? fallbackSpeakers[index] ?? "핵심";
+  const text = match?.[2] ?? value;
+
+  return {
+    speaker,
+    text,
+    tone: getClaimTone(speaker),
+  };
+}
+
+function getClaimTone(speaker: string) {
+  if (speaker === "Claude") return "claude";
+  if (speaker === "GPT") return "gpt";
+  if (speaker === "Gemini") return "gemini";
+
+  return "neutral";
 }
 
 function getDiscussionFrames(events: DebateEvent[]) {

@@ -5603,6 +5603,142 @@ body {
   font-size: 17px;
 }
 
+.prof-conclusion-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.prof-conclusion-block {
+  border: 1px solid rgba(224, 228, 244, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 14px;
+}
+
+.prof-conclusion-block.is-primary {
+  border-color: rgba(211, 216, 237, 0.9);
+  background: rgba(250, 251, 255, 0.9);
+}
+
+.prof-conclusion-block h3 {
+  margin: 0 0 9px;
+  color: #7257ff;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.prof-final-copy,
+.prof-conclusion-block p,
+.prof-conclusion-block li,
+.prof-source-list a {
+  margin: 0;
+  color: #182044;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+.prof-claim-list,
+.prof-source-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prof-claim-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+}
+
+.prof-claim-name {
+  min-height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.prof-claim-name.claude {
+  background: #fff1e4;
+  color: #c45d18;
+}
+
+.prof-claim-name.gpt {
+  background: #e8f7f2;
+  color: #137863;
+}
+
+.prof-claim-name.gemini {
+  background: #f0efff;
+  color: #5148d7;
+}
+
+.prof-claim-name.neutral {
+  background: #f3f4f8;
+  color: #4b5563;
+}
+
+.prof-compact-list,
+.prof-step-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prof-compact-list li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 4px;
+}
+
+.prof-compact-list li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: rgba(114, 87, 255, 0.78);
+}
+
+.prof-step-list {
+  gap: 10px;
+}
+
+.prof-step-list > li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.prof-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #7257ff;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.prof-source-list a {
+  color: #3f35d4;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
 .prof-recommend-card,
 .prof-summary-card,
 .prof-source-card {
