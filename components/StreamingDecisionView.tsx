@@ -318,12 +318,35 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       return;
     }
 
-    if (incoming.type === "final" || incoming.type === "error") {
+    if (incoming.type === "final") {
+      fastForwardRef.current = true;
+      applyFinalReport(incoming);
+      void processQueue();
+      return;
+    }
+
+    if (incoming.type === "error") {
       fastForwardRef.current = true;
     }
 
     pendingRef.current.push(incoming);
     void processQueue();
+  }
+
+  function applyFinalReport(incoming: Extract<IncomingEvent, { type: "final" }>) {
+    setThinkingSpeaker(null);
+    setIsFinalizing(false);
+    updateDecision((current) => ({
+      ...current,
+      topicType: incoming.topicType ?? current.topicType,
+      status: "completed",
+      updatedAt: new Date().toISOString(),
+      finalReport: incoming.finalReport,
+      error: null,
+    }));
+    window.setTimeout(() => {
+      finalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   }
 
   async function processQueue() {
@@ -353,22 +376,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       }
 
       if (incoming.type === "final") {
-        setThinkingSpeaker(null);
-        setIsFinalizing(true);
-        await pacedWait(1200);
-        setIsFinalizing(false);
-        updateDecision((current) => ({
-          ...current,
-          topicType: incoming.topicType ?? current.topicType,
-          status: "completed",
-          updatedAt: new Date().toISOString(),
-          finalReport: incoming.finalReport,
-          error: null,
-        }));
-        window.setTimeout(() => {
-          finalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 80);
-        await pacedWait(300);
+        applyFinalReport(incoming);
         continue;
       }
 
@@ -399,7 +407,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       return {
         ...current,
         topicType: topicType ?? current.topicType,
-        status: "running",
+        status: current.finalReport ? "completed" : "running",
         updatedAt: new Date().toISOString(),
         events: [...current.events, event],
         error: null,
