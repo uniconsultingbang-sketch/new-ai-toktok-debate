@@ -49,6 +49,7 @@ export async function POST(request: Request) {
   const response = NextResponse.json({
     ok: true,
     sessionLockEnabled,
+    sessionPolicy: "latest-login-wins",
     user: { id: user.id, name: user.name },
   });
 

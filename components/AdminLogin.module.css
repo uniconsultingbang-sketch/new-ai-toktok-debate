@@ -270,6 +270,18 @@
   line-height: 1.45;
 }
 
+.notice {
+  margin: -6px 0 0;
+  border: 1px solid #c7ddff;
+  border-radius: 8px;
+  background: #f2f7ff;
+  padding: 11px 13px;
+  color: #2252a3;
+  font-size: 14px;
+  font-weight: 520;
+  line-height: 1.45;
+}
+
 .footer {
   position: absolute;
   z-index: 1;

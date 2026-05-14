@@ -3249,6 +3249,18 @@ body {
   line-height: 1.45;
   letter-spacing: -0.3px;
 }
+.login-notice {
+  margin: -4px 0 0;
+  border: 1px solid #c7ddff;
+  border-radius: 16px;
+  background: rgba(239, 246, 255, 0.82);
+  padding: 12px 14px;
+  color: #2252a3;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+}
 
 .login-beta-note {
   display: grid;

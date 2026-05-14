@@ -16,6 +16,11 @@ export async function GET() {
   const response = NextResponse.json({
     configured: true,
     authenticated: Boolean(session),
+    code: token && !session ? "session_replaced" : null,
+    message:
+      token && !session
+        ? "다른 기기에서 같은 계정으로 새 로그인이 발생했거나 로그인 시간이 만료되었습니다. 다시 로그인해 주세요."
+        : null,
     user: session ? { id: session.id, name: session.name } : null,
   });
 

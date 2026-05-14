@@ -17,6 +17,10 @@ export function LoginForm() {
   const nextPath = searchParams.get("next") || "/";
   const isAdminLogin = nextPath === "/admin" || nextPath.startsWith("/admin?");
   const adminUserId = "demo03";
+  const sessionNotice =
+    !error && searchParams.get("reason") === "session-replaced"
+      ? "다른 기기에서 같은 계정으로 새 로그인이 발생했거나 로그인 시간이 만료되었습니다. 다시 로그인하면 현재 기기로 접속이 전환됩니다."
+      : "";
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,7 +91,7 @@ export function LoginForm() {
                   value={id}
                   onChange={(event) => setId(event.target.value)}
                   autoComplete="username"
-                  placeholder="아이디를 입력하세요."
+                  placeholder="아이디를 입력하세요"
                 />
               </div>
             </label>
@@ -101,7 +105,7 @@ export function LoginForm() {
                   onChange={(event) => setPassword(event.target.value)}
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder="비밀번호를 입력하세요."
+                  placeholder="비밀번호를 입력하세요"
                 />
                 <button
                   className={styles.visibilityButton}
@@ -114,6 +118,7 @@ export function LoginForm() {
               </div>
             </label>
 
+            {sessionNotice ? <p className={styles.notice}>{sessionNotice}</p> : null}
             {error ? <p className={styles.error}>{error}</p> : null}
 
             <button className={styles.submitButton} type="submit" disabled={isLoading}>
@@ -122,7 +127,7 @@ export function LoginForm() {
           </form>
         </section>
 
-        <p className={styles.footer}>© 2025 AI Talk Talk. All rights reserved.</p>
+        <p className={styles.footer}>2026 AI Talk Talk. All rights reserved.</p>
       </main>
     );
   }
@@ -154,17 +159,17 @@ export function LoginForm() {
           ) : (
             <div className="login-bot-stage">
               <div className="mobile-bot mobile-bot-claude">
-                <span className="mobile-bot-bubble">♥</span>
+                <span className="mobile-bot-bubble">AI</span>
                 <span className="mobile-bot-face" />
                 <strong>Claude</strong>
               </div>
               <div className="mobile-bot mobile-bot-gpt">
-                <span className="mobile-bot-bubble">•••</span>
+                <span className="mobile-bot-bubble">...</span>
                 <span className="mobile-bot-face" />
                 <strong>GPT</strong>
               </div>
               <div className="mobile-bot mobile-bot-gemini">
-                <span className="mobile-bot-bubble">✦</span>
+                <span className="mobile-bot-bubble">OK</span>
                 <span className="mobile-bot-face" />
                 <strong>Gemini</strong>
               </div>
@@ -208,6 +213,7 @@ export function LoginForm() {
             </div>
           </label>
 
+          {sessionNotice ? <p className="login-notice">{sessionNotice}</p> : null}
           {error ? <p className="login-error">{error}</p> : null}
 
           <button type="submit" disabled={isLoading}>
@@ -224,6 +230,8 @@ export function LoginForm() {
             지정된 3명만 사용하는 테스트 공간입니다.
           </p>
         </div>
+
+        <p className="login-footer">2026 DA Information. All rights reserved.</p>
       </section>
     </main>
   );
