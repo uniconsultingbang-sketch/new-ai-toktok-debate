@@ -231,7 +231,21 @@ export function LoginForm() {
           </p>
         </div>
 
-        <p className="login-footer">2026 DA Information. All rights reserved.</p>
+        <p
+          className="login-footer"
+          style={{
+            width: "100%",
+            margin: "8px auto 0",
+            color: "rgba(105, 113, 134, 0.48)",
+            textAlign: "center",
+            fontSize: 9,
+            fontWeight: 500,
+            lineHeight: 1.35,
+            letterSpacing: 0,
+          }}
+        >
+          © 2026 DA Information. All rights reserved.
+        </p>
       </section>
     </main>
   );
