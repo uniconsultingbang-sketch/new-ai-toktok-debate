@@ -318,6 +318,10 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       return;
     }
 
+    if (incoming.type === "final" || incoming.type === "error") {
+      fastForwardRef.current = true;
+    }
+
     pendingRef.current.push(incoming);
     void processQueue();
   }
@@ -361,6 +365,9 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
           finalReport: incoming.finalReport,
           error: null,
         }));
+        window.setTimeout(() => {
+          finalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
         await pacedWait(300);
         continue;
       }
