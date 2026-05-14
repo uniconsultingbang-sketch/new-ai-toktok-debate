@@ -430,3 +430,10 @@ Next의 .next 산출물이 테스트 중 재생성되며 순간적으로 깨진 
 - 합의/이견은 점 목록, 실행 방향은 번호 목록으로 보여 모바일에서 결론을 더 쉽게 훑어볼 수 있게 했습니다.
 - `npx.cmd tsc --noEmit` 통과.
 - `npm.cmd run build` 통과.
+
+## 2026-05-14 - Pretendard 웹폰트 이름 호환 보강
+
+- 운영 URL에서 `/fonts/PretendardVariable.woff2` 웹폰트 파일이 정상 응답하는 것을 확인했습니다.
+- 일부 CSS가 `Pretendard` 이름만 참조해 모바일에서 설치 폰트가 없으면 기본 서체로 보일 수 있는 문제를 확인했습니다.
+- 같은 웹폰트 파일을 `Pretendard Variable`과 `Pretendard` 두 이름으로 등록해, 기존 화면의 폰트 지정도 웹폰트로 잡히도록 보강했습니다.
+- `npx.cmd tsc --noEmit` 통과.
