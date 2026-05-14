@@ -196,13 +196,9 @@ export function DecisionDashboard() {
             <img src="/images/ai-talk-login-logo.png" alt="AI Talk Talk Beta" draggable={false} />
           </div>
 
-          {auth?.configured ? (
-            <button type="button" className="simple-icon-button" onClick={logout} aria-label="로그아웃">
-              <LogOut className="size-5" />
-            </button>
-          ) : (
-            <div className="simple-icon-spacer" />
-          )}
+          <button type="button" className="simple-icon-button" onClick={logout} aria-label="로그아웃">
+            <LogOut className="size-5" />
+          </button>
         </header>
 
         <section className="simple-hero-section">

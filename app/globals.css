@@ -4621,8 +4621,10 @@ body {
 }
 
 .simple-topbar > button.simple-icon-button {
-  opacity: 0;
-  pointer-events: none;
+  justify-self: end;
+  color: #6f7484;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .simple-brand {
@@ -5192,10 +5194,10 @@ body {
 }
 
 .prof-detail-title:not(.is-expanded) {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
+  overflow: visible;
+  -webkit-box-orient: unset;
+  -webkit-line-clamp: unset;
 }
 
 .prof-topic-subtitle {
@@ -5413,16 +5415,22 @@ body {
 .prof-speaker-claude {
   --card-line: #f3d8bd;
   --card-main: #ff8735;
+  --insight-line: #f4dec8;
+  --insight-bg: #fff5eb;
 }
 
 .prof-speaker-gpt {
   --card-line: #c7e8df;
   --card-main: #178d78;
+  --insight-line: #cceee6;
+  --insight-bg: #eefbf7;
 }
 
 .prof-speaker-gemini {
   --card-line: #d9d4ff;
   --card-main: #625bff;
+  --insight-line: #dfdcff;
+  --insight-bg: #f3f1ff;
 }
 
 .prof-analysis-title {
@@ -5439,6 +5447,68 @@ body {
 .prof-inline-icon {
   width: 25px;
   height: 25px;
+}
+
+.prof-analysis-body {
+  display: grid;
+  gap: 12px;
+}
+
+.prof-analysis-points {
+  display: grid;
+  gap: 9px;
+}
+
+.prof-analysis-points h4,
+.prof-insight-card h4 {
+  margin: 0 0 5px;
+  color: #10183a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.prof-analysis-points ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.prof-analysis-points li {
+  margin-top: 4px;
+  color: #151d42;
+  font-size: 13.5px;
+  font-weight: 620;
+  line-height: 1.42;
+  letter-spacing: 0;
+}
+
+.prof-insight-card {
+  border: 1px solid var(--insight-line, rgba(220, 224, 243, 0.95));
+  border-radius: 17px;
+  background: var(--insight-bg, rgba(245, 246, 255, 0.86));
+  padding: 13px;
+}
+
+.prof-insight-card h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--card-main, #5145e8);
+  font-size: 15px;
+}
+
+.prof-insight-card .prof-inline-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.prof-insight-card p {
+  margin: 8px 0 0;
+  color: #1e294f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0;
 }
 
 .prof-ai-turn .prof-turn-message {
