@@ -195,6 +195,11 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
       return;
     }
 
+    if (decision?.finalReport) {
+      finalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [decision?.events.length, decision?.finalReport, thinkingSpeaker, isFinalizing, isBusy]);
 
