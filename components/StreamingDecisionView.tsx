@@ -12,7 +12,6 @@ import {
   RotateCcw,
   Scale,
   ShieldAlert,
-  Sparkles,
   UserRoundCheck,
 } from "lucide-react";
 import {
@@ -90,6 +89,12 @@ const speakerMeta: Record<
     panel: "prof-speaker-gemini",
     avatarClass: "prof-avatar-gemini",
   },
+};
+
+const speakerAvatarSrc: Partial<Record<SpeakerId, string>> = {
+  claude: "/images/avatar-claude-new.png",
+  gpt: "/images/avatar-gpt-new.png",
+  gemini: "/images/avatar-gemini-new.png",
 };
 
 export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
@@ -418,6 +423,10 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function scrollToFinalReport() {
+    finalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function restartDebate() {
     if (!decision) {
       return;
@@ -459,6 +468,11 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   const questionText = decision.content || decision.title;
   const canExpandQuestion = questionText.length > 46;
   const topicSummary = getTopicSummary(decision);
+  const discussionFrames = getDiscussionFrames(decision.events);
+  const topicPurpose = getTopicPurpose(decision);
+  const perspectiveText = discussionFrames.length
+    ? discussionFrames.join(", ")
+    : "낙관 관점, 비관 관점, 중간 관점";
 
   return (
     <main className="prof-detail-page">
@@ -476,13 +490,27 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
             >
               <ArrowLeft className="size-5" />
             </a>
+            <img
+              src="/images/ai-talk-login-logo.png"
+              alt="AI Talk Talk Beta"
+              className="prof-detail-logo"
+              draggable={false}
+            />
+            <span className="prof-topbar-spacer" aria-hidden="true" />
+          </div>
+
+          <div className="prof-topic-kicker-row">
+            <p className="prof-section-kicker">
+              <span className="prof-mini-icon prof-topic-kicker-icon">
+                <img src="/images/icon-topic.png" alt="" />
+              </span>
+              주제 정리
+            </p>
             <span className="prof-detail-status">
               <CheckCircle2 className="size-4" />
               {statusText[decision.status]}
             </span>
           </div>
-
-          <p className="prof-eyebrow">3-View Logic Debate</p>
           <h1 className={`prof-detail-title ${isQuestionExpanded ? "is-expanded" : ""}`}>{questionText}</h1>
           {canExpandQuestion ? (
             <button type="button" onClick={() => setIsQuestionExpanded((value) => !value)} className="prof-detail-expand">
@@ -490,30 +518,38 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
             </button>
           ) : null}
 
-          <TopicSummaryMini summary={topicSummary} />
+          <p className="prof-topic-subtitle">사회자가 안건을 정리하고, 주제에 맞는 3개 관점으로 토론합니다.</p>
+
+          <TopicSummaryMini summary={topicSummary} purpose={topicPurpose} perspectives={perspectiveText} />
 
           <div className="prof-hero-summary">
-            <span>사회자</span>
-            <span>Claude</span>
-            <span>GPT</span>
-            <span>Gemini</span>
+            <img
+              src="/images/ai-talk-speaker-pills.png"
+              alt="사회자, Claude, GPT, Gemini"
+              className="prof-speaker-pills-image"
+              draggable={false}
+            />
           </div>
-        </section>
 
-        {decision.status === "paused" || decision.status === "failed" || decision.status === "completed" ? (
-          <button type="button" onClick={restartDebate} className="prof-restart-button">
-            <RotateCcw className="size-4" />
-            {decision.status === "completed" ? "같은 안건으로 다시 토론" : "처음부터 다시 토론"}
-          </button>
-        ) : null}
+          {decision.status === "paused" || decision.status === "failed" || decision.status === "completed" ? (
+            <button type="button" onClick={restartDebate} className="prof-restart-button">
+              <RotateCcw className="size-4" />
+              {decision.status === "completed" ? "같은 안건으로 다시 토론" : "처음부터 다시 토론"}
+            </button>
+          ) : null}
+        </section>
 
         <section className="prof-debate-panel">
           <div className="prof-panel-head">
-            <div>
-              <p className="prof-eyebrow">Live Meeting</p>
-              <h2>3관점 논리 토론</h2>
-            </div>
-            {isBusy ? <span>발언 정리중</span> : <span>기록됨</span>}
+            <h2 className="prof-panel-title">
+              <span className="prof-mini-icon">
+                <img src="/images/icon-perspective.png" alt="" />
+              </span>
+              3 관점 토론
+            </h2>
+            <button type="button" onClick={scrollToFinalReport} className="prof-result-link">
+              토론 결과
+            </button>
           </div>
 
           <div className="prof-round-list">
@@ -549,6 +585,12 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
         ) : null}
 
         <nav className="prof-bottom-nav">
+          {decision.finalReport ? (
+            <button type="button" onClick={scrollToFinalReport} className="prof-result-button">
+              <FileText className="size-4" />
+              결과 바로 보기
+            </button>
+          ) : null}
           <button type="button" onClick={goHome}>
             <Home className="size-4" />
             홈으로 돌아가기
@@ -565,42 +607,124 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   );
 }
 
-function TopicSummaryMini({ summary }: { summary: { topic: string; coreQuestion: string } | null }) {
+function TopicSummaryMini({
+  summary,
+  purpose,
+  perspectives,
+}: {
+  summary: { topic: string; coreQuestion: string } | null;
+  purpose: string;
+  perspectives: string;
+}) {
   return (
     <section className="prof-topic-summary-mini" aria-label="주제 정리">
-      <p>주제 정리</p>
-      {summary ? (
-        <dl>
-          <dt>주제:</dt>
-          <dd>{summary.topic}</dd>
-          <dt>핵심 질문:</dt>
-          <dd>{summary.coreQuestion}</dd>
-        </dl>
-      ) : (
-        <span>AI가 사용자가 쓴 안건을 주제와 핵심 질문으로 정리하고 있습니다.</span>
-      )}
+      <article className="prof-topic-cell">
+        <span className="prof-mini-icon">
+          <img src="/images/icon-insight.png" alt="" />
+        </span>
+        <div>
+          <h2>핵심 질문</h2>
+          <p>{summary?.coreQuestion ?? "AI가 사용자가 쓴 안건을 핵심 질문으로 정리하고 있습니다."}</p>
+        </div>
+      </article>
+      <article className="prof-topic-cell">
+        <span className="prof-mini-icon">
+          <img src="/images/icon-purpose.png" alt="" />
+        </span>
+        <div>
+          <h2>토론 목적</h2>
+          <p>{purpose}</p>
+        </div>
+      </article>
+      <article className="prof-topic-cell">
+        <span className="prof-mini-icon">
+          <img src="/images/icon-perspective.png" alt="" />
+        </span>
+        <div>
+          <h2>토론 관점</h2>
+          <p>{perspectives}</p>
+        </div>
+      </article>
     </section>
   );
 }
 
 function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }) {
+  if (event.speaker === "moderator") {
+    return <ModeratorTurn event={event} />;
+  }
+
   const meta = speakerMeta[event.speaker];
+  const message = event.roundNumber === 1 ? null : formatStructuredMessage(event.message);
+  const avatarSrc = speakerAvatarSrc[event.speaker];
+  const isRight = event.speaker === "gpt";
 
   return (
-    <article className={`prof-turn-card ${meta.panel}`}>
+    <article className={`prof-turn-card prof-ai-turn ${isRight ? "is-right" : "is-left"} ${meta.panel}`}>
       <div className="prof-speaker-head">
-        <span className={`prof-speaker-icon ${meta.avatarClass ?? ""}`} style={{ color: meta.accent }}>
-          {meta.avatarClass ? <span className="prof-avatar-face" /> : meta.icon}
-        </span>
+        {!isRight && avatarSrc ? (
+          <span className="prof-speaker-avatar is-ai">
+            <img src={avatarSrc} alt="" />
+          </span>
+        ) : null}
         <div>
           <h3>{meta.title}</h3>
         </div>
-        <time>{formatBubbleTime(event.createdAt)}</time>
+        {isRight && avatarSrc ? (
+          <span className="prof-speaker-avatar is-ai">
+            <img src={avatarSrc} alt="" />
+          </span>
+        ) : null}
       </div>
-      <div className="prof-turn-message">
-        {formatReadableMessage(event.message).map((paragraph, index) => (
-          <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
-        ))}
+      <div className="prof-analysis-card">
+        <h3 className="prof-analysis-title">
+          <span className="prof-inline-icon">
+            <img src={event.speaker === "claude" ? "/images/icon-proposal.png" : event.speaker === "gpt" ? "/images/icon-perspective.png" : "/images/icon-purpose.png"} alt="" />
+          </span>
+          {event.roundTitle}
+        </h3>
+        <div className="prof-turn-message">
+        {message ? (
+          <>
+            <strong className="prof-turn-headline">{message.headline}</strong>
+            {message.paragraphs.map((paragraph, index) => (
+              <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
+            ))}
+            {message.bullets.length ? (
+              <ul>
+                {message.bullets.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        ) : (
+          formatReadableMessage(event.message).map((paragraph, index) => (
+            <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
+          ))
+        )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ModeratorTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }) {
+  const summary = event.topicSummary ?? parseTopicSummary(event.message);
+  const message = summary
+    ? `주제는 "${summary.topic}"입니다. 핵심 질문은 "${summary.coreQuestion}"입니다. 세 관점에서 현실적으로 토론해 보겠습니다.`
+    : formatReadableMessage(event.message).join(" ");
+
+  return (
+    <article className="prof-moderator-card">
+      <div className="prof-moderator-content">
+        <div className="prof-moderator-portrait">
+          <img src="/images/moderator-host.png" alt="" />
+        </div>
+        <div>
+          <p className="prof-moderator-title">사회자</p>
+          <p className="prof-moderator-copy">{message}</p>
+        </div>
       </div>
     </article>
   );
@@ -644,48 +768,59 @@ function FinalizingPanel() {
 }
 
 function FinalReportBlock({ report }: { report: FinalReport }) {
+  const conclusion = formatConclusion(report.summary, report.recommendation);
+  const conclusionText = [conclusion.headline, ...conclusion.paragraphs].join(" ");
   const labels = {
+    mainClaims: report.sectionLabels?.mainClaims ?? "주요 주장 비교",
+    agreements: report.sectionLabels?.agreements ?? "합의된 부분",
+    disagreements: report.sectionLabels?.disagreements ?? "의견이 갈린 부분",
     keyReasons: report.sectionLabels?.keyReasons ?? "이유",
     keyRisks: report.sectionLabels?.keyRisks ?? "주의할 점",
     conditions: report.sectionLabels?.conditions ?? "핵심 쟁점",
     nextActions: report.sectionLabels?.nextActions ?? "현실적인 실행 방향",
     evidenceSources: report.sectionLabels?.evidenceSources ?? "근거 자료",
   };
+  const mainClaims = report.mainClaims?.length ? report.mainClaims : report.keyReasons;
+  const agreements = report.agreements?.length ? report.agreements : report.conditions;
+  const disagreements = report.disagreements?.length ? report.disagreements : report.keyRisks;
 
   return (
     <section className="prof-final-panel">
       <div className="prof-final-head">
-        <Sparkles className="size-5" />
+        <span className="prof-mini-icon">
+          <img src="/images/icon-final.png" alt="" />
+        </span>
         <div>
-          <p className="prof-eyebrow">Final Conclusion</p>
-          <h2>{report.heading ?? "최종 판단"}</h2>
+          <h2>{report.heading ?? "결론"}</h2>
         </div>
       </div>
 
-      <article className="prof-recommend-card">
-        <h3>{report.recommendation}</h3>
-        <p>{report.summary}</p>
+      <article className="prof-recommend-card prof-conclusion-block is-primary">
+        <h3>한 줄 정리</h3>
+        <p>{conclusionText}</p>
       </article>
 
       <div className="prof-summary-grid">
-        <SummaryCard title={labels.keyReasons} items={report.keyReasons} tone="blue" />
-        <SummaryCard title={labels.keyRisks} items={report.keyRisks} tone="red" />
-        <SummaryCard title={labels.conditions} items={report.conditions} tone="gold" />
+        <SummaryCard title={labels.mainClaims} items={mainClaims} tone="blue" />
+        <SummaryCard title={labels.agreements} items={agreements} tone="gold" />
+        <SummaryCard title={labels.disagreements} items={disagreements} tone="red" />
         <SummaryCard title={labels.nextActions} items={report.nextActions} tone="green" />
       </div>
 
-      {report.evidenceSources?.length ? (
-        <div className="prof-source-card">
-          <h3>{labels.evidenceSources}</h3>
-          <ul>
-            {report.evidenceSources.map((source) => (
-              <li key={source}>
+      <div className="prof-source-card">
+        <h3>{labels.evidenceSources}</h3>
+        <ul>
+          {(report.evidenceSources?.length ? report.evidenceSources : ["추가 확인 필요"]).map((source) => (
+            <li key={source}>
+              {/^https?:\/\//i.test(source) ? (
                 <a href={source} target="_blank" rel="noreferrer">{source}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+              ) : (
+                source
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }
@@ -696,11 +831,48 @@ function SummaryCard({ title, items, tone }: { title: string; items: string[]; t
       <h3>{title}</h3>
       <ul>
         {(items.length ? items : ["토론 결과가 정리되면 이 항목에 표시됩니다."]).slice(0, 4).map((item) => (
-          <li key={item}>{item}</li>
+          <SummaryItem key={item} value={item} />
         ))}
       </ul>
     </article>
   );
+}
+
+function SummaryItem({ value }: { value: string }) {
+  const match = value.match(/^(Claude|GPT|Gemini|사회자)\s*:\s*(.+)$/);
+
+  if (!match) {
+    return <li>{value}</li>;
+  }
+
+  return (
+    <li>
+      <strong>{match[1]}:</strong> {match[2]}
+    </li>
+  );
+}
+
+function getDiscussionFrames(events: DebateEvent[]) {
+  const excluded = new Set(["주제 정리", "첫 의견", "핵심 쟁점"]);
+  const frames = events
+    .filter(
+      (event): event is Extract<DebateEvent, { type: "turn" }> =>
+        event.type === "turn" && event.speaker !== "moderator" && Boolean(event.roundTitle),
+    )
+    .map((event) => event.roundTitle.replace(/^논리\s*토론\s*[-:]?\s*/i, "").trim())
+    .filter((title) => title && !excluded.has(title));
+
+  return Array.from(new Set(frames)).slice(0, 3);
+}
+
+function getTopicPurpose(decision: DecisionRecord) {
+  const frames = getDiscussionFrames(decision.events);
+
+  if (frames.length) {
+    return `${frames.join(", ")}을 비교해 현실적인 판단과 실행 방향을 도출`;
+  }
+
+  return "가능성, 리스크, 실행 조건을 함께 비교해 현실적인 판단 도출";
 }
 
 function getRoundTitle(events: DebateEvent[]) {
@@ -833,6 +1005,86 @@ function formatReadableMessage(value: string) {
   }
 
   return paragraphs;
+}
+
+function formatStructuredMessage(value: string) {
+  const sanitized = sanitizeDisplayText(value)
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  const lines = sanitized
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const bullets = lines
+    .filter((line) => /^[-•*]\s+/.test(line))
+    .map((line) => line.replace(/^[-•*]\s+/, "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const prose = lines.length
+    ? lines.filter((line) => !/^[-•*]\s+/.test(line)).join(" ")
+    : sanitized;
+  const sentences = splitSentences(prose);
+  const headlineIndex = sentences.findIndex((sentence) => !isConnectionOnlySentence(sentence));
+  const resolvedHeadlineIndex = headlineIndex >= 0 ? headlineIndex : 0;
+  const headline = sentences[resolvedHeadlineIndex] || prose || "핵심 의견을 정리하고 있습니다.";
+  const paragraphs = sentences
+    .filter((sentence, index) => index !== resolvedHeadlineIndex && !isConnectionOnlySentence(sentence))
+    .slice(0, 3);
+
+  return {
+    headline,
+    paragraphs,
+    bullets,
+  };
+}
+
+function isConnectionOnlySentence(value: string) {
+  const normalized = value
+    .replace(/[.!?。！？"“”'‘’\s]/g, "")
+    .trim();
+
+  if (!normalized) return false;
+
+  if (
+    [
+      "사회자가정리한판단기준에동의합니다",
+      "Claude의가능성평가는인정합니다",
+      "두의견모두타당합니다",
+      "Gemini의우려는필요합니다",
+      "Claude의제한된실험제안은이전보다현실적입니다",
+      "GPT의지적까지반영하면결론은단순한찬반이아닙니다",
+    ].includes(normalized)
+  ) {
+    return true;
+  }
+
+  return (
+    normalized.length <= 28 &&
+    /(동의합니다|인정합니다|타당합니다|필요합니다|현실적입니다|맞습니다)$/.test(normalized)
+  );
+}
+
+function formatConclusion(summary: string, recommendation: string) {
+  const sanitized = sanitizeDisplayText(summary)
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  const sentences = splitSentences(sanitized);
+  const headline = sentences[0] || `${recommendation}으로 보는 것이 현실적입니다.`;
+  const paragraphs = sentences.slice(1, 3);
+
+  return {
+    headline,
+    paragraphs,
+  };
+}
+
+function splitSentences(value: string) {
+  return value
+    .match(/[^.!?。！？]+[.!?。！？]?/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) ?? [];
 }
 
 function formatBubbleTime(value: string) {

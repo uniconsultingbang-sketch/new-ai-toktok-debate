@@ -50,12 +50,32 @@ Codex 채팅방끼리는 대화 내용을 자동 공유하지 않습니다. 각 
 - 주 작업: 실제 사용자 흐름 테스트, 오류 재현, 우선순위 분류, 담당 채팅방 전달문 작성
 - 작업 로그: `docs/work-log/qa-work-log.md`
 
-### AI Talk Talk_프론트 UIUX 개발
+### AI Talk Talk_UIUX 개발 A
 
-- 역할: 사용자 화면 UI, 문구, 레이아웃, 모바일 사용성 수정
+- 역할: 로그인 화면, 홈 화면 UI, 문구, 레이아웃, 모바일 사용성 수정
 - 먼저 읽을 문서: `docs/chat-briefs/01-design-chat-brief.md`
-- 주 작업: 홈 화면, 토론 진행 화면, 결과 화면, 말풍선, 입력창, 버튼, 카드
-- 건드리지 말 것: API 로직, AI 토론 생성 로직, 저장/조회 로직, 어드민 전용 기능
+- 주 작업: 로그인 화면, 홈 화면, 이전 토론 기록 서랍, 입력창, 시작 버튼, PWA 안내 카드
+- 중요 역할: 일반 웹 UI 구현이 아니라 `Image-to-UI Reconstruction Task`를 수행합니다.
+- 첨부 이미지는 단순 참고가 아니라 시안 원본에 가깝게 보고, 픽셀 감성·디자인 밀도·부드러운 그림자·여백·입체감·조명감·타이포그래피·모바일 앱 완성도를 최대한 복원합니다.
+- 프론트엔드 구현 능력보다 비주얼 복원 능력을 우선합니다. 방실장님이 준 이미지의 감정선과 고급스러운 모바일 앱 느낌을 보존합니다.
+- 적용할 디자인 스킬: visual density matching, soft shadow recreation, premium spacing analysis, clay-style depth recreation, lighting-aware UI styling, image-based typography matching, visual balance preservation, mobile app visual polish, emotional UI recreation.
+- 금지: Tailwind 기본 느낌, shadcn 기본 카드 스타일, 일반 SaaS 대시보드 느낌, 단순 `rounded-xl + shadow-md` 조합, 엔지니어식 단순 구현.
+- 목표: 첨부 이미지와 최대한 유사한 감성의 모바일 앱 UI 복원.
+- 건드리지 말 것: 토론 진행 화면, 결과 화면, 말풍선 세부 UI, API 로직, AI 토론 생성 로직, 저장/조회 로직, 어드민 전용 기능
+- 작업 로그: `docs/work-log/design-work-log.md`
+
+### AI Talk Talk_UIUX 개발 B
+
+- 역할: 채팅/토론 진행 화면, 결과 화면, 말풍선, 토론방 모바일 사용성 수정
+- 먼저 읽을 문서: `docs/chat-briefs/06-uiux-b-chat-brief.md`
+- 주 작업: 토론 진행 화면, 결과 화면, AI 말풍선, 최종 결론 카드, 긴 답변 줄바꿈, 토론방 모바일 화면
+- 중요 역할: 일반 웹 UI 구현이 아니라 `Image-to-UI Reconstruction Task`를 수행합니다.
+- 첨부 이미지는 단순 참고가 아니라 시안 원본에 가깝게 보고, 픽셀 감성·디자인 밀도·부드러운 그림자·여백·입체감·조명감·타이포그래피·모바일 앱 완성도를 최대한 복원합니다.
+- 프론트엔드 구현 능력보다 비주얼 복원 능력을 우선합니다. 방실장님이 준 이미지의 감정선과 고급스러운 모바일 앱 느낌을 보존합니다.
+- 적용할 디자인 스킬: visual density matching, soft shadow recreation, premium spacing analysis, clay-style depth recreation, lighting-aware UI styling, image-based typography matching, visual balance preservation, mobile app visual polish, emotional UI recreation.
+- 금지: Tailwind 기본 느낌, shadcn 기본 카드 스타일, 일반 SaaS 대시보드 느낌, 단순 `rounded-xl + shadow-md` 조합, 엔지니어식 단순 구현.
+- 목표: 첨부 이미지와 최대한 유사한 감성의 모바일 앱 UI 복원.
+- 건드리지 말 것: 로그인 화면, 홈 화면, API 로직, AI 토론 생성 로직, 저장/조회 로직, 어드민 전용 기능
 - 작업 로그: `docs/work-log/design-work-log.md`
 
 ### AI Talk Talk_어드민 개발
@@ -166,6 +186,14 @@ npm.cmd run build
 - 모바일 화면 깨짐 확인
 
 UI 작업은 가능하면 실제 화면 또는 스크린샷으로 확인합니다.
+
+### UIUX 필수 자체 검수 프로세스
+
+- UIUX 채팅방은 방실장님께 결과를 말하기 전에 반드시 실제 화면을 먼저 확인합니다.
+- 수정 후에는 모바일 기준 스크린샷을 직접 찍고, 방실장님이 준 기준 이미지와 비교합니다.
+- 기준 이미지와 다른 부분이 보이면 즉시 다시 수정하고, 다시 스크린샷으로 확인합니다.
+- "수정 완료"라고 보고하는 시점은 자체 스크린샷 검수까지 끝난 뒤입니다.
+- 특히 로그인, 홈, 토론방처럼 시각 품질이 중요한 화면은 구현보다 시안 복원과 모바일 실기기 느낌을 우선합니다.
 
 ## 11. GitHub/Vercel 저장 규칙
 

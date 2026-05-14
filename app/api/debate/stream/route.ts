@@ -68,6 +68,9 @@ type GeneratedTurn = {
 type FinalReport = {
   recommendation: Recommendation;
   summary: string;
+  mainClaims?: string[];
+  agreements?: string[];
+  disagreements?: string[];
   keyReasons: string[];
   keyRisks: string[];
   conditions: string[];
@@ -75,6 +78,9 @@ type FinalReport = {
   evidenceSources?: string[];
   heading?: string;
   sectionLabels?: {
+    mainClaims?: string;
+    agreements?: string;
+    disagreements?: string;
     keyReasons?: string;
     keyRisks?: string;
     conditions?: string;
@@ -107,6 +113,9 @@ const speakerMeta: Record<SpeakerId, { speakerName: string; roleName: string; st
 };
 
 const finalSectionLabels = {
+  mainClaims: "주요 주장 비교",
+  agreements: "합의된 부분",
+  disagreements: "의견이 갈린 부분",
   keyReasons: "이유",
   keyRisks: "주의할 점",
   conditions: "핵심 쟁점",
@@ -174,6 +183,7 @@ export async function POST(request: Request) {
       const emit = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       const history: string[] = [];
       const evidenceSources = new Set(profile.defaultSources);
+      let fallbackTurnCount = 0;
 
       try {
         for (const plan of createTurnPlans(input)) {
@@ -190,6 +200,16 @@ export async function POST(request: Request) {
           }
 
           const message = useFallback ? fallback : candidate;
+          const isFallbackMessage = message === fallback;
+
+          if (isFallbackMessage && plan.phase !== "topic") {
+            fallbackTurnCount += 1;
+          }
+
+          if (!input.devMode && fallbackTurnCount >= 2) {
+            throw new Error(unstableAiMessage);
+          }
+
           const meta = speakerMeta[plan.speaker];
 
           emit({
@@ -392,19 +412,29 @@ JSON 형식:
 function fallbackInterpretedAgenda(content: string, title: string, profile: TopicProfile): InterpretedAgenda {
   const normalized = content.trim().split(/\s+/).join(" ");
   const readableTopic = makeReadableTopic(title || normalized);
+  const coreQuestion = makeFallbackCoreQuestion(readableTopic);
   const complexity = inferFallbackComplexity(normalized, profile.type);
   const rotationCount = complexity === "simple" ? 1 : complexity === "complex" ? 3 : 2;
   return {
     topic: readableTopic,
-    coreQuestion: `사용자가 묻는 "${readableTopic}" 안건에서 실제로 판단해야 할 핵심 기준은 무엇일까?`,
+    coreQuestion,
     inferredOptions: ["진행", "작게 검증", "보류"],
     inferredConcerns: ["수요 불확실성", "비용과 실행 부담", "실패 시 손실"],
     focusAreas: defaultFocusAreas(profile.type),
     complexity,
     rotationCount,
     discussionFrames: defaultDiscussionFrames(readableTopic, profile.type, rotationCount),
-    summary: `사용자가 적은 안건은 "${readableTopic}"에 대해 현실적인 판단 기준과 실행 조건을 정리해야 한다는 의미로 해석됩니다.`,
+    summary: `사용자가 적은 안건은 ${readableTopic}에 대해 현실적인 판단 기준과 실행 조건을 정리해야 한다는 의미로 해석됩니다.`,
   };
+}
+
+function makeFallbackCoreQuestion(topic: string) {
+  const trimmed = topic.trim().replace(/[.。]+$/, "");
+  if (!trimmed) return "이 안건에서 실제로 먼저 판단해야 할 기준은 무엇인가?";
+  if (/[?？]$/.test(trimmed) || /(까|나|을까|일까|할까|해야 하나|해야 하는가|필요한가)$/.test(trimmed)) {
+    return /[?？]$/.test(trimmed) ? trimmed : `${trimmed}?`;
+  }
+  return `${trimmed}를 판단하려면 무엇을 먼저 확인해야 하는가?`;
 }
 
 function parseInterpretedAgenda(text: string): Partial<InterpretedAgenda> {
@@ -584,8 +614,12 @@ ${input.agenda.topic}
 핵심 질문:
 ${input.agenda.coreQuestion}
 - 추가 설명은 붙이지 않습니다.`
-    : `- 2~5문장으로 말합니다.
-- 직전 발언이 있으면 첫 문장에서 그 논리나 전제를 직접 받아야 합니다.
+    : `- 첫 문장은 핵심 의견 1문장으로 씁니다. 화면에서 이 문장만 굵게 보입니다.
+- 그 아래 본문은 2~3문장으로 정리합니다.
+- 항목으로 나눌 수 있는 내용은 "- 항목" 형태의 점 목록으로 씁니다.
+- 첫 문장을 "동의합니다", "인정합니다", "타당합니다" 같은 맞장구만으로 끝내지 않습니다.
+- 직전 발언이 있으면 첫 문장 안에 그 논리나 전제를 받은 뒤, 바로 자신의 핵심 판단을 함께 말합니다.
+- 정리된 주제나 핵심 질문 문장을 첫머리에 그대로 반복하지 않습니다. 필요한 경우 "이 안건", "그 전제", "이 판단"처럼 받아서 말합니다.
 - "동의합니다", "다만", "하지만", "그 지적은", "그 우려는", "두 의견을 합치면"처럼 연결 신호를 자연스럽게 사용합니다.
 - 근거 없는 단정은 피하고 필요한 추가 확인을 말합니다.
 - 최종 판단은 마지막 결론에서만 내립니다.`;
@@ -645,30 +679,30 @@ function fallbackTurn(input: NormalizedInput, profile: TopicProfile, plan: TurnP
   }
 
   if (plan.phase === "opening" && plan.speaker === "claude") {
-    return `사회자가 정리한 "${question}"이라는 질문에 동의합니다. 저는 이 안건이 사용자의 불편이나 조직의 비효율을 줄일 가능성은 있다고 봅니다. 다만 가능성은 선언이 아니라 작은 검증에서 확인되어야 하므로, 처음부터 크게 밀기보다 ${focusText} 기준으로 반응을 볼 수 있는 범위를 좁혀야 합니다.`;
+    return `이 안건은 전면 추진보다 작은 검증으로 가능성을 확인하는 쪽이 현실적입니다. 사회자가 정리한 기준처럼 핵심은 가능성 자체보다 실제 검증 순서입니다. 사용자의 불편이나 조직의 비효율을 줄일 여지는 있지만, 처음부터 크게 밀기보다 검토 기준별로 반응을 볼 수 있는 범위를 좁혀야 합니다.`;
   }
 
   if (plan.phase === "opening" && plan.speaker === "gpt") {
-    return `Claude의 가능성 평가는 인정합니다. 다만 "${subject}"에서 가능성이 있다는 것과 실제로 비용을 감당하며 실행할 수 있다는 것은 다른 문제입니다. 지금은 ${input.risks || "수요, 비용, 책임 주체, 실패했을 때의 손실"}을 확인하지 않으면 낙관이 너무 앞설 수 있습니다.`;
+    return `성공 기준과 중단 기준이 없으면 이 안건은 실행보다 비용 누수가 먼저 생길 수 있습니다. Claude가 말한 가능성은 인정하지만, 가능성이 있다는 것과 실제로 비용을 감당하며 실행할 수 있다는 것은 다른 문제입니다. 지금은 ${input.risks || "수요, 비용, 책임 주체, 실패했을 때의 손실"}을 확인하지 않으면 낙관이 너무 앞설 수 있습니다.`;
   }
 
   if (plan.phase === "opening" && plan.speaker === "gemini") {
-    return `두 의견 모두 타당합니다. 결국 핵심은 "${question}"에 대해 매력만 볼 것이 아니라, 실제 행동 변화나 실행 판단으로 이어질 만큼 근거가 있는지입니다. 그래서 판단 기준은 ${focusText}로 나누고, 각 기준에서 진행과 보류의 조건을 분명히 하는 것이 좋습니다.`;
+    return `양쪽 의견을 합치면 핵심은 진행 여부가 아니라 검증 조건을 먼저 세우는 것입니다. Claude는 가능성을 봤고 GPT는 비용과 실패 기준을 짚었습니다. 그래서 판단 기준은 검토 항목별로 나누고, 각 기준에서 진행과 보류의 조건을 분명히 하는 것이 좋습니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "claude") {
-    return `${previousName}의 우려는 필요합니다. 다만 "${plan.roundTitle}" 쟁점에서는 "${subject}"를 바로 확대하기보다 가장 작은 범위에서 확인하는 방식이 가능성을 살릴 수 있습니다. 저는 전면 추진보다 제한된 실험으로 전환해 ${focusText}를 확인하는 접근이 현실적이라고 봅니다.`;
+    return `${plan.roundTitle} 쟁점에서는 가장 작은 범위의 실험이 가능성을 살리는 방법입니다. ${previousName}의 우려는 필요하지만, 그것이 곧 보류만 뜻하지는 않습니다. 저는 전면 추진보다 제한된 실험으로 전환해 검토 기준을 확인하는 접근이 현실적이라고 봅니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gpt") {
-    return `Claude의 제한된 실험 제안은 이전보다 현실적입니다. 하지만 "${question}"에 대한 성공 기준과 중단 기준이 없으면 시간을 쓰고도 결론을 못 냅니다. 최소한 비용 한도, 검증 기간, 책임자, 실패로 판단할 조건을 먼저 정해야 합니다.`;
+    return `제한된 실험도 실패 기준이 없으면 작은 실행이 아니라 작은 낭비가 될 수 있습니다. Claude의 제안은 이전보다 현실적이지만, 성공 기준과 중단 기준이 없으면 시간을 쓰고도 결론을 못 냅니다. 최소한 비용 한도, 검증 기간, 책임자, 실패로 판단할 조건을 먼저 정해야 합니다.`;
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gemini") {
-    return `GPT의 지적까지 반영하면 결론은 단순한 찬반이 아닙니다. "${subject}"는 가능성을 버리지 않되, ${focusText} 기준에서 성공 조건과 중단 조건을 먼저 정해야 합니다. 이 안건의 균형점은 가능성을 확인하면서도 비용과 책임을 통제하는 조건부 검증입니다.`;
+    return `균형점은 가능성을 확인하되 비용과 책임을 통제하는 조건부 검증입니다. GPT의 지적까지 반영하면 결론은 단순한 찬반이 아닙니다. 이 안건은 가능성을 버리지 않되, ${focusText} 기준에서 성공 조건과 중단 조건을 먼저 정해야 합니다.`;
   }
 
-  return `두 의견을 종합하면 "${subject}"의 핵심 쟁점은 ${focusText}입니다. 실제 수요와 근거가 충분한지, 기존 방식보다 나은지, 비용과 운영 부담을 감당할 수 있는지, 실패했을 때 멈출 기준이 있는지를 확인해야 합니다. 최종 결론은 이 기준을 확인할 수 있는 작은 실행 계획이 있느냐에 달려 있습니다.`;
+  return `두 의견을 종합하면 이 안건의 핵심 쟁점은 ${focusText}입니다. 실제 수요와 근거가 충분한지, 기존 방식보다 나은지, 비용과 운영 부담을 감당할 수 있는지, 실패했을 때 멈출 기준이 있는지를 확인해야 합니다. 최종 결론은 이 기준을 확인할 수 있는 작은 실행 계획이 있느냐에 달려 있습니다.`;
 }
 
 function shouldUseFallback(message: string, plan: TurnPlan, history: string[], input: NormalizedInput) {
@@ -682,6 +716,7 @@ function shouldUseFallback(message: string, plan: TurnPlan, history: string[], i
   if (plan.phase !== "topic" && plan.speaker === "gemini" && normalized.length < 90) return true;
   if (plan.phase !== "topic" && !hasAgendaOverlap(normalized, input)) return true;
   if (plan.phase !== "topic" && history.length && !hasConnectionSignal(normalized)) return true;
+  if (plan.phase !== "topic" && startsWithAgendaEcho(normalized, input)) return true;
 
   return false;
 }
@@ -713,6 +748,26 @@ function containsForbiddenTone(value: string) {
 
 function hasConnectionSignal(value: string) {
   return /(동의|다만|하지만|그 지적|그 우려|그 의견|그 부분|두 의견|두 관점|사회자|Claude|GPT|Gemini|앞선|이전|인정|반대로|보완)/.test(value);
+}
+
+function startsWithAgendaEcho(value: string, input: NormalizedInput) {
+  const firstChunk = normalizeEchoText(value).slice(0, 140);
+  const agendaPhrases = [
+    input.agenda.topic,
+    input.agenda.coreQuestion,
+    input.originalContent,
+  ]
+    .map((item) => normalizeEchoText(item))
+    .filter((item) => item.length >= 18);
+
+  return agendaPhrases.some((phrase) => {
+    const sample = phrase.slice(0, Math.min(42, phrase.length));
+    return sample.length >= 18 && firstChunk.includes(sample);
+  });
+}
+
+function normalizeEchoText(value: string) {
+  return value.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
 }
 
 function hasAgendaOverlap(value: string, input: NormalizedInput) {
@@ -781,6 +836,27 @@ function normalizeKeywordText(value: string) {
   return value.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
 }
 
+function isGenericConclusionSummary(summary: string, input: NormalizedInput) {
+  const normalized = summary.replace(/\s+/g, " ").trim();
+  const genericPatterns = [
+    /지금 바로 단정하기보다 검증 가능한 범위부터 확인해야 합니다/,
+    /성공 기준과 중단 기준을 먼저 정하는 편이 안전합니다/,
+    /검토 기준을 같은 기준 위에 놓고/,
+    /전면 실행이 아니라 작은 범위에서 검증/,
+  ];
+  const hasGenericPattern = genericPatterns.some((pattern) => pattern.test(normalized));
+
+  if (!hasGenericPattern) {
+    return false;
+  }
+
+  const keywords = agendaKeywords(input).filter((keyword) => keyword.length >= 3);
+  const haystack = normalizeKeywordText(normalized);
+  const matchingKeywordCount = keywords.filter((keyword) => haystack.includes(keyword)).length;
+
+  return matchingKeywordCount < 2;
+}
+
 function countSentences(value: string) {
   return value.split(/[.!?。！？]\s+|[.!?。！？]$/).filter((part) => part.trim()).length;
 }
@@ -816,6 +892,7 @@ ${history.map((item) => `- ${item}`).join("\n")}
 
 규칙:
 - 판단은 "추천", "조건부 추천", "보류", "비추천" 중 하나만 사용합니다.
+- recommendation은 내부 분류값입니다. 화면에서는 별도 제목으로 강조하지 않으므로, summary 첫 문장 안에 실제 판단을 자연스럽게 녹여 씁니다.
 - 판단 기준은 아래처럼 구분합니다.
   - 추천: 근거가 충분하고, 리스크가 낮거나 통제 가능하며, 지금 실행해도 손실이 크지 않을 때.
   - 조건부 추천: 가능성은 있지만 불확실성이 있어 작게 검증하거나 조건을 걸고 진행해야 할 때.
@@ -823,17 +900,23 @@ ${history.map((item) => `- ${item}`).join("\n")}
   - 비추천: 근거가 약하고 위험이나 손실이 크며, 실패 시 되돌리기 어려울 때.
 - "애매함"만으로 조건부 추천을 선택하지 마세요. 애매하지만 작게 해볼 수 있으면 조건부 추천, 애매하고 지금 움직이면 위험하면 보류입니다.
 - 보고서 말투를 과하게 쓰지 말고, 실제 회의 결론처럼 간결하게 정리합니다.
-- 이유, 현실적인 실행 방향, 주의할 점은 구체적으로 씁니다.
+- summary는 첫 문장 1개를 핵심 결론으로 쓰고, 이어서 1~2문장만 보충합니다.
+- summary 첫 문장에는 recommendation 값을 자연스럽게 포함하되, "검증 가능한 범위부터 확인" 같은 일반론만 쓰지 말고 무엇을 왜 그렇게 판단하는지 드러냅니다.
+- summary와 nextActions는 정리된 주제와 핵심 질문에 직접 답해야 합니다. 어떤 안건에도 붙일 수 있는 문장은 실패입니다.
+- mainClaims는 Claude, GPT, Gemini의 주요 주장을 각각 1개씩 비교합니다.
+- agreements는 세 관점이 공통으로 인정한 내용을 씁니다.
+- disagreements는 의견이 갈린 부분이나 더 검증해야 할 차이를 씁니다.
+- nextActions는 현실적인 실행 방향을 구체적으로 씁니다.
 - 강한 시장/기술/의료 주장은 근거 자료가 있을 때만 씁니다.
 - evidenceSources에는 실제 URL만 넣습니다.
 
 JSON 형식:
 {
   "recommendation": "추천 | 조건부 추천 | 보류 | 비추천",
-  "summary": "2~4문장",
-  "keyReasons": ["이유"],
-  "keyRisks": ["주의할 점"],
-  "conditions": ["핵심 쟁점"],
+  "summary": "핵심 결론 1문장 + 보충 1~2문장",
+  "mainClaims": ["Claude: 주요 주장", "GPT: 주요 주장", "Gemini: 주요 주장"],
+  "agreements": ["합의된 부분"],
+  "disagreements": ["의견이 갈린 부분"],
   "nextActions": ["현실적인 실행 방향"],
   "evidenceSources": ["https://..."]
 }
@@ -862,35 +945,83 @@ JSON 형식:
 }
 
 function fallbackFinal(input: NormalizedInput, profile: TopicProfile, sources: string[]): FinalReport {
-  const focus = input.focusAreas.length ? input.focusAreas.join(", ") : "수요, 비용, 리스크, 실행";
+  const focusItems = input.focusAreas.length ? input.focusAreas : defaultFocusAreas(profile.type);
+  const focus = focusItems.join(", ");
+  const riskText = input.agenda.inferredConcerns.length
+    ? input.agenda.inferredConcerns.slice(0, 3).join(", ")
+    : input.risks || "불확실성, 실행 부담, 실패 시 손실";
+  const optionText = input.agenda.inferredOptions.length
+    ? input.agenda.inferredOptions.slice(0, 3).join(" / ")
+    : input.options || "진행 / 작게 검증 / 보류";
+  const finalTone = fallbackDecisionTone(input, profile);
+  const subject = input.agenda.topic;
+  const mainClaims = [
+    `Claude: ${subject}의 가능성은 살리되 처음부터 크게 벌리지 말고 작은 범위에서 확인해야 한다고 봅니다.`,
+    `GPT: ${riskText}이 정리되지 않으면 실행보다 손실 관리가 먼저라고 봅니다.`,
+    `Gemini: ${focus}을 같은 기준으로 놓고 진행 범위와 중단 기준을 정해야 한다고 봅니다.`,
+  ];
+  const agreements = [
+    `판단 기준은 ${focus}으로 나누어 보는 것이 맞습니다.`,
+    `선택지는 ${optionText} 안에서 비교해야 합니다.`,
+    "바로 확대하기보다 책임자, 기간, 비용 한도를 먼저 정해야 합니다.",
+  ];
+  const disagreements = [
+    "Claude는 작은 실행으로 가능성을 확인하자는 쪽이고, GPT는 실패 기준이 없으면 실행 자체가 위험하다고 봅니다.",
+    "Gemini는 찬반보다 먼저 성공 조건과 중단 조건을 합의해야 한다고 정리합니다.",
+  ];
 
   return {
-    heading: "최종 결론",
-    recommendation: "보류",
-    summary: `"${input.agenda.topic}" 안건은 "${input.agenda.coreQuestion}"라는 질문을 기준으로 가능성과 리스크를 함께 봐야 합니다. 지금 정보만으로 단정하기보다 ${focus}을 같은 기준 위에 놓고 작게 검증하는 편이 안전합니다. 실행한다면 성공 기준과 중단 기준을 먼저 정해야 합니다.`,
-    keyReasons: [
-      `${profile.decisionFrame}`,
-      `"${input.agenda.topic}"은 가능성은 있지만 실제 수요와 실행 여건을 확인해야 합니다.`,
-      `작은 검증으로 시작하면 "${input.agenda.coreQuestion}"에 대한 판단 근거를 만들 수 있습니다.`,
-    ],
+    heading: "결론",
+    recommendation: finalTone.recommendation,
+    summary: finalTone.summary,
+    mainClaims,
+    agreements,
+    disagreements,
+    keyReasons: mainClaims,
     keyRisks: [
-      input.risks || "근거 없이 확대하면 비용과 책임 범위가 커질 수 있습니다.",
-      `"${input.agenda.topic}"에서 사용자 행동이나 조직 실행력이 예상보다 약할 수 있습니다.`,
+      `${riskText}이 남아 있으면 판단이 흔들릴 수 있습니다.`,
+      "근거 없이 확대하면 비용과 책임 범위가 커질 수 있습니다.",
       "중단 기준이 없으면 검증이 아니라 관성적 진행이 될 수 있습니다.",
     ],
-    conditions: [
-      `${input.agenda.topic}의 실제 수요가 충분히 강한가`,
-      `${input.agenda.coreQuestion}에 답할 만큼 기존 방식보다 분명히 나은가`,
-      "비용 대비 효과가 나오는가",
-      "실패했을 때 멈출 기준이 있는가",
-    ],
+    conditions: agreements,
     nextActions: [
-      `"${input.agenda.topic}"의 대상 범위와 검증 기간을 작게 정합니다.`,
+      "대상 범위, 담당자, 검증 기간, 비용 한도를 먼저 정합니다.",
       `${focus} 기준으로 성공 기준과 중단 기준을 숫자 또는 관찰 가능한 기준으로 정합니다.`,
-      "검증 후 추천, 보류, 비추천 중 하나로 다시 판단합니다.",
+      `${optionText} 중 어떤 선택으로 갈지 검증 결과를 보고 다시 판단합니다.`,
     ],
     evidenceSources: normalizeSources(sources),
     sectionLabels: finalSectionLabels,
+  };
+}
+
+function fallbackDecisionTone(input: NormalizedInput, profile: TopicProfile): { recommendation: Recommendation; summary: string } {
+  const focus = (input.focusAreas.length ? input.focusAreas : defaultFocusAreas(profile.type)).slice(0, 2).join(" / ");
+  const risks = input.agenda.inferredConcerns.length
+    ? input.agenda.inferredConcerns.slice(0, 2).join(" / ")
+    : input.risks || "불확실성";
+  const subject = input.agenda.topic;
+  const hasStrongRisk = /(규제|임상|안전|부작용|법률|개인정보|보안|책임|손실|큰 비용|환자|투자)/.test(
+    `${input.originalContent} ${risks}`,
+  );
+  const hasClearLowRiskCue = input.agenda.complexity === "simple" && !hasStrongRisk;
+
+  if (hasClearLowRiskCue && profile.type === "general") {
+    return {
+      recommendation: "추천",
+      summary: `결론은 ${subject}을 확인 비용이 작고 되돌리기 쉬운 선택이라면 추천 쪽으로 보는 것이 현실적입니다. 핵심은 얻는 편익이 불편이나 실패 비용보다 큰지입니다. 정보가 부족하면 손실이 작은 선택을 우선하는 편이 안전합니다.`,
+    };
+  }
+
+  if ((input.agenda.complexity === "complex" || profile.type === "pharma") && hasStrongRisk) {
+    return {
+      recommendation: "보류",
+      summary: `결론은 ${subject}을 지금 바로 실행하기보다 핵심 근거를 먼저 확인하는 보류에 가깝습니다. 특히 ${focus || "근거"} 기준을 확인하지 않으면 실행 판단이 추측에 가까워집니다. 남아 있는 리스크는 ${risks}입니다.`,
+    };
+  }
+
+  return {
+    recommendation: "조건부 추천",
+    summary: `결론은 ${subject}을 전면 실행이 아니라 작은 범위에서 검증하며 추진하는 조건부 추천으로 보는 것이 현실적입니다. 핵심 기준인 ${focus || "근거"}를 먼저 확인해 실제 진행할 범위와 멈출 기준을 정해야 합니다. 남아 있는 리스크는 ${risks}입니다.`,
   };
 }
 
@@ -905,13 +1036,20 @@ function normalizeGeneratedFinalReport(
     return null;
   }
 
+  const mainClaims = normalizeList(parsed.mainClaims ?? parsed.keyReasons, []);
+  const agreements = normalizeList(parsed.agreements ?? parsed.conditions, []);
+  const disagreements = normalizeList(parsed.disagreements ?? parsed.keyRisks, []);
+
   const report: FinalReport = {
-    heading: "최종 결론",
+    heading: "결론",
     recommendation,
     summary: cleanText(parsed.summary, ""),
-    keyReasons: normalizeList(parsed.keyReasons, []),
-    keyRisks: normalizeList(parsed.keyRisks, []),
-    conditions: normalizeList(parsed.conditions, []),
+    mainClaims,
+    agreements,
+    disagreements,
+    keyReasons: mainClaims,
+    keyRisks: disagreements,
+    conditions: agreements,
     nextActions: normalizeList(parsed.nextActions, []),
     evidenceSources: normalizeSources([...(parsed.evidenceSources ?? []), ...evidenceSources]),
     sectionLabels: finalSectionLabels,
@@ -923,19 +1061,20 @@ function normalizeGeneratedFinalReport(
 function isFinalReportUsable(report: FinalReport, input: NormalizedInput) {
   const combined = [
     report.summary,
-    ...report.keyReasons,
-    ...report.keyRisks,
-    ...report.conditions,
+    ...(report.mainClaims ?? report.keyReasons),
+    ...(report.agreements ?? report.conditions),
+    ...(report.disagreements ?? report.keyRisks),
     ...report.nextActions,
   ].join("\n");
 
   if (!report.summary || report.summary.length < 20) return false;
   if (!looksCompleteSentence(report.summary)) return false;
+  if (isGenericConclusionSummary(report.summary, input)) return false;
   if (containsForbiddenTone(combined)) return false;
   if (!hasAgendaOverlap(combined, input)) return false;
-  if (report.keyReasons.length < 1) return false;
-  if (report.keyRisks.length < 1) return false;
-  if (report.conditions.length < 1) return false;
+  if ((report.mainClaims ?? report.keyReasons).length < 1) return false;
+  if ((report.agreements ?? report.conditions).length < 1) return false;
+  if ((report.disagreements ?? report.keyRisks).length < 1) return false;
   if (report.nextActions.length < 1) return false;
 
   return true;
@@ -944,18 +1083,18 @@ function isFinalReportUsable(report: FinalReport, input: NormalizedInput) {
 function isGenericFallbackFinalUsable(report: FinalReport) {
   const combined = [
     report.summary,
-    ...report.keyReasons,
-    ...report.keyRisks,
-    ...report.conditions,
+    ...(report.mainClaims ?? report.keyReasons),
+    ...(report.agreements ?? report.conditions),
+    ...(report.disagreements ?? report.keyRisks),
     ...report.nextActions,
   ].join("\n");
 
   if (!report.summary || report.summary.length < 20) return false;
   if (!looksCompleteSentence(report.summary)) return false;
   if (containsForbiddenTone(combined)) return false;
-  if (!report.keyReasons.length) return false;
-  if (!report.keyRisks.length) return false;
-  if (!report.conditions.length) return false;
+  if (!(report.mainClaims ?? report.keyReasons).length) return false;
+  if (!(report.agreements ?? report.conditions).length) return false;
+  if (!(report.disagreements ?? report.keyRisks).length) return false;
   if (!report.nextActions.length) return false;
 
   return true;

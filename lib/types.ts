@@ -33,6 +33,9 @@ export type DebateTurn = {
 export type FinalReport = {
   recommendation: "추천" | "조건부 추천" | "보류" | "비추천";
   summary: string;
+  mainClaims?: string[];
+  agreements?: string[];
+  disagreements?: string[];
   keyReasons: string[];
   keyRisks: string[];
   conditions: string[];

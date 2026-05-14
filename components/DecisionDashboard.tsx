@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpenCheck,
+  ChevronDown,
   Clock3,
   History,
   LogOut,
@@ -53,6 +54,8 @@ export function DecisionDashboard() {
   const [isStarting, setIsStarting] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
   const [auth, setAuth] = useState<AuthMe | null>(null);
+
+  const archiveUserLabel = useMemo(() => formatArchiveUserLabel(auth), [auth]);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,8 +193,7 @@ export function DecisionDashboard() {
           </label>
 
           <div className="simple-brand">
-            <p>AI Talk Talk</p>
-            <span>3관점 논리 토론</span>
+            <img src="/images/ai-talk-login-logo.png" alt="AI Talk Talk Beta" draggable={false} />
           </div>
 
           {auth?.configured ? (
@@ -206,29 +208,18 @@ export function DecisionDashboard() {
         <section className="simple-hero-section">
           <p className="simple-hello">안녕하세요!</p>
           <h1>
-            오늘은 어떤
+            오늘은 어떤 주제로
             <br />
-            주제로
-            <br />
-            이야기해볼까요?
+            토론해볼까요?
           </h1>
+          <p className="simple-hero-copy">
+            Gemini, Claude, GPT와 함께
+            <br />
+            다양한 주제에 대해 토론해보세요.
+          </p>
 
           <div className="home-bot-stage" aria-hidden="true">
-            <div className="mobile-bot mobile-bot-claude">
-              <span className="mobile-bot-bubble">♥</span>
-              <span className="mobile-bot-face" />
-              <strong>Claude</strong>
-            </div>
-            <div className="mobile-bot mobile-bot-gpt">
-              <span className="mobile-bot-bubble">•••</span>
-              <span className="mobile-bot-face" />
-              <strong>GPT</strong>
-            </div>
-            <div className="mobile-bot mobile-bot-gemini">
-              <span className="mobile-bot-bubble">✦</span>
-              <span className="mobile-bot-face" />
-              <strong>Gemini</strong>
-            </div>
+            <img src="/images/home-ai-characters.png" alt="" className="home-ai-characters" draggable={false} />
           </div>
         </section>
 
@@ -255,7 +246,7 @@ export function DecisionDashboard() {
                   }
                 }}
                 maxLength={200}
-                placeholder="메시지를 입력하세요..."
+                placeholder="주제를 입력하세요..."
               />
               <small>{question.length}/200</small>
             </label>
@@ -273,6 +264,8 @@ export function DecisionDashboard() {
           <Scale className="size-5" />
           <p>낙관, 비관, 중간 관점이 실제 회의처럼 반박하고 보완합니다.</p>
         </section>
+
+        <p className="simple-home-footer">© 2026 DA Information. All rights reserved.</p>
       </div>
 
       <div className="archive-overlay" role="dialog" aria-modal="true" aria-label="이전 토론 기록">
@@ -280,7 +273,6 @@ export function DecisionDashboard() {
         <aside className="archive-drawer">
           <div className="archive-head">
             <div>
-              <p className="prof-eyebrow">Archive</p>
               <h2>이전 토론 기록</h2>
             </div>
             <label htmlFor="archive-toggle" className="simple-icon-button" aria-label="닫기" role="button" tabIndex={0}>
@@ -288,7 +280,7 @@ export function DecisionDashboard() {
             </label>
           </div>
 
-          {auth?.configured && auth.user ? <p className="archive-user">{auth.user.name}님 로그인 중</p> : null}
+          {archiveUserLabel ? <p className="archive-user">{archiveUserLabel}님 로그인 중</p> : null}
 
           <div className="archive-list">
             {recentDecisions.length ? (
@@ -299,29 +291,37 @@ export function DecisionDashboard() {
 
                 return (
                   <article key={decision.id} className="archive-item">
-                    <button
-                      type="button"
-                      className="archive-main-button"
-                      onClick={() => router.push(`/decisions/${decision.id}`)}
-                    >
+                    <div className="archive-card-top">
                       <span className={`prof-status-pill ${statusStyle[decision.status]}`}>{statusText[decision.status]}</span>
-                      <strong className={isExpanded ? "is-expanded" : ""}>{displayQuestion}</strong>
-                      <span>
-                        <Clock3 className="size-3" />
-                        {formatDecisionDate(decision.createdAt)}
-                      </span>
-                    </button>
-
-                    <div className="archive-actions">
-                      {canExpand ? (
-                        <button type="button" onClick={() => toggleExpandedItem(decision.id)}>
-                          {isExpanded ? "접기" : "펼침"}
-                        </button>
-                      ) : null}
-                      <button type="button" onClick={() => removeDecision(decision.id)} aria-label="토론 삭제">
+                      <button type="button" className="archive-delete-button" onClick={() => removeDecision(decision.id)} aria-label="토론 삭제">
                         <Trash2 className="size-4" />
                       </button>
                     </div>
+
+                    <div className="archive-title-row">
+                      <button
+                        type="button"
+                        className="archive-main-button"
+                        onClick={() => router.push(`/decisions/${decision.id}`)}
+                      >
+                        <strong className={isExpanded ? "is-expanded" : ""}>{displayQuestion}</strong>
+                      </button>
+                      {canExpand ? (
+                        <button
+                          type="button"
+                          className={`archive-expand-button ${isExpanded ? "is-expanded" : ""}`}
+                          onClick={() => toggleExpandedItem(decision.id)}
+                          aria-label={isExpanded ? "토론 제목 접기" : "토론 제목 펼치기"}
+                        >
+                          <ChevronDown className="size-4" />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <span className="archive-date">
+                      <Clock3 className="size-3" />
+                      {formatDecisionDate(decision.createdAt)}
+                    </span>
                   </article>
                 );
               })
@@ -354,4 +354,19 @@ function getAuthOwnerId(auth: AuthMe | null) {
   }
 
   return auth.user?.id ?? null;
+}
+
+function formatArchiveUserLabel(auth: AuthMe | null) {
+  if (!auth?.configured || !auth.user) {
+    return "";
+  }
+
+  const ownerId = auth.user.id.trim();
+  const name = auth.user.name.trim();
+
+  if (ownerId && name.includes(ownerId)) {
+    return ownerId;
+  }
+
+  return name || ownerId;
 }

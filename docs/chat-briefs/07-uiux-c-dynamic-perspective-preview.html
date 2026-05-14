@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Talk Talk - Dynamic Perspective Debate Preview</title>
+    <style>
+      :root {
+        --ink: #090f38;
+        --muted: #68708d;
+        --line: #dfe3f3;
+        --bg: #f8f9ff;
+        --panel: rgba(255, 255, 255, 0.88);
+        --violet: #7257ff;
+        --violet-soft: #f0edff;
+        --orange: #ff8735;
+        --orange-soft: #fff5eb;
+        --green: #178d78;
+        --green-soft: #eefbf7;
+        --blue: #625bff;
+        --blue-soft: #f3f1ff;
+        --shadow: 0 18px 54px rgba(38, 45, 92, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 12% 4%, rgba(125, 94, 255, 0.14), transparent 28%),
+          radial-gradient(circle at 92% 1%, rgba(177, 226, 255, 0.44), transparent 30%),
+          linear-gradient(180deg, #fbfcff 0%, #f6f7ff 50%, #ffffff 100%);
+        color: var(--ink);
+        font-family: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+        letter-spacing: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      .screen {
+        width: min(100%, 430px);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 18px 14px 24px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) 48px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .icon-button {
+        width: 48px;
+        height: 48px;
+        border: 1px solid rgba(204, 210, 235, 0.85);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--ink);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 10px 28px rgba(62, 70, 120, 0.08);
+      }
+
+      .topbar-spacer {
+        width: 48px;
+        height: 48px;
+      }
+
+      .brand {
+        justify-self: center;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        font-size: clamp(25px, 8vw, 34px);
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .beta {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 11px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #b99cff 0%, #7d66ec 100%);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .panel {
+        border: 1px solid rgba(218, 224, 245, 0.92);
+        border-radius: 24px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .topic-panel {
+        padding: 24px 18px 18px;
+      }
+
+      .section-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: var(--violet);
+        font-size: 15px;
+        font-weight: 850;
+      }
+
+      .topic-kicker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 0 12px;
+      }
+
+      .mini-icon {
+        width: 29px;
+        height: 29px;
+        border-radius: 12px;
+        background: transparent;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        flex: 0 0 auto;
+        filter: drop-shadow(0 5px 10px rgba(82, 71, 169, 0.12));
+      }
+
+      .mini-icon img,
+      .inline-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      .section-kicker .mini-icon,
+      .panel-title .mini-icon,
+      .final-label .mini-icon {
+        width: 34px;
+        height: 34px;
+      }
+
+      .section-kicker .mini-icon {
+        width: 42px;
+        height: 42px;
+      }
+
+      .inline-icon {
+        width: 22px;
+        height: 22px;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+
+      .topic-head {
+        display: block;
+      }
+
+      h1 {
+        margin: 0;
+        padding: 13px 14px 14px;
+        border: 1px solid rgba(218, 224, 245, 0.92);
+        border-radius: 18px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(245, 242, 255, 0.76)),
+          rgba(255, 255, 255, 0.88);
+        color: #070d39;
+        font-size: clamp(19px, 5.4vw, 25px);
+        font-weight: 900;
+        line-height: 1.28;
+        letter-spacing: -0.018em;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 28px rgba(43, 49, 99, 0.06);
+      }
+
+      .status {
+        min-height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        background: rgba(222, 248, 237, 0.74);
+        color: #168066;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 850;
+        flex: 0 0 auto;
+      }
+
+      .subtitle {
+        margin: 14px 0 18px;
+        color: #5145ff;
+        font-size: 15px;
+        font-weight: 760;
+        line-height: 1.45;
+      }
+
+      .topic-grid {
+        display: grid;
+        gap: 14px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .topic-cell {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 6px;
+        align-items: start;
+      }
+
+      .topic-cell h2 {
+        margin: 2px 0 6px;
+        color: #2e25b9;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .topic-cell p {
+        margin: 0;
+        color: #151c41;
+        font-size: 14px;
+        font-weight: 620;
+        line-height: 1.58;
+      }
+
+      .participants-line {
+        margin-top: 12px;
+      }
+
+      .participants-line img {
+        width: 100%;
+        display: block;
+        object-fit: contain;
+      }
+
+      .debate-panel {
+        margin-top: 14px;
+        padding: 18px 12px;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .panel-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: var(--violet);
+        font-size: 19px;
+        font-weight: 900;
+      }
+
+      .summary-button {
+        min-height: 30px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(242, 239, 255, 0.74);
+        color: #5145e8;
+        padding: 0 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 850;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .moderator-card {
+        margin: 0 0 20px;
+        padding: 13px 14px;
+        border: 1px solid rgba(231, 222, 213, 0.88);
+        border-radius: 18px;
+        background: rgba(255, 252, 248, 0.86);
+        box-shadow: 0 8px 22px rgba(71, 54, 25, 0.06);
+      }
+
+      .speaker-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .moderator-content {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+      }
+
+      .moderator-portrait {
+        width: 74px;
+        height: 82px;
+        border-radius: 16px;
+        overflow: hidden;
+        background: rgba(255, 245, 235, 0.7);
+      }
+
+      .moderator-portrait img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 55%;
+        display: block;
+      }
+
+      .moderator-title {
+        margin: 0 0 5px;
+        color: #65401f;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .moderator-copy {
+        margin: 0;
+        color: #182044;
+        font-size: 15px;
+        font-weight: 620;
+        line-height: 1.42;
+        letter-spacing: -0.01em;
+      }
+
+      .ai-turn {
+        margin: 0 0 20px;
+      }
+
+      .ai-turn.is-right .speaker-strip {
+        justify-content: flex-end;
+      }
+
+      .ai-turn.is-right .speaker-name {
+        text-align: right;
+      }
+
+      .ai-turn.is-right .analysis-card {
+        margin-left: auto;
+      }
+
+      .ai-turn.is-left .analysis-card {
+        margin-right: auto;
+      }
+
+      .speaker-avatar {
+        width: 60px;
+        height: 60px;
+        display: grid;
+        place-items: center;
+        filter: drop-shadow(0 10px 18px rgba(44, 52, 100, 0.12));
+      }
+
+      .speaker-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      .speaker-avatar.is-ai {
+        width: 58px;
+        height: 58px;
+      }
+
+      .speaker-name {
+        margin: 0;
+        color: var(--speaker-fg);
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .speaker-name time {
+        margin-left: 6px;
+        color: #9298ad;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .bubble {
+        border: 1px solid rgba(220, 224, 243, 0.95);
+        border-radius: 18px;
+        background: #fff;
+        padding: 14px 15px;
+        color: #152044;
+        font-size: 15px;
+        font-weight: 620;
+        line-height: 1.42;
+        letter-spacing: -0.01em;
+        box-shadow: 0 10px 24px rgba(45, 54, 105, 0.08);
+      }
+
+      .analysis-card {
+        border: 1px solid var(--card-line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 14px;
+        width: min(100%, 352px);
+        margin-top: 8px;
+        box-shadow: 0 7px 18px rgba(45, 54, 105, 0.045);
+      }
+
+      .analysis-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+        color: var(--card-main);
+        font-size: 15px;
+        font-weight: 900;
+        line-height: 1.18;
+        letter-spacing: -0.012em;
+      }
+
+      .analysis-title .inline-icon {
+        width: 25px;
+        height: 25px;
+      }
+
+      .analysis-body {
+        display: grid;
+        gap: 12px;
+      }
+
+      .points {
+        display: grid;
+        gap: 9px;
+      }
+
+      .points h3,
+      .insight h3 {
+        margin: 0 0 5px;
+        color: #10183a;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.2;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      li {
+        margin-top: 4px;
+        color: #151d42;
+        font-size: 13.5px;
+        font-weight: 620;
+        line-height: 1.42;
+        letter-spacing: -0.01em;
+      }
+
+      .insight {
+        border: 1px solid var(--insight-line);
+        border-radius: 17px;
+        background: var(--insight-bg);
+        padding: 13px;
+      }
+
+      .insight h3 {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--card-main);
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      .insight p {
+        margin: 8px 0 0;
+        color: #1e294f;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+      }
+
+      .final-panel {
+        margin-top: 14px;
+        padding: 18px;
+        scroll-margin-top: 18px;
+      }
+
+      .final-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 14px;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .conclusion-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .conclusion-block {
+        border: 1px solid rgba(224, 228, 244, 0.82);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.78);
+        padding: 14px;
+      }
+
+      .conclusion-block.is-primary {
+        border-color: rgba(211, 216, 237, 0.9);
+        background: rgba(250, 251, 255, 0.9);
+      }
+
+      .conclusion-block h3 {
+        margin: 0 0 9px;
+        color: var(--violet);
+        font-size: 14px;
+        font-weight: 900;
+        line-height: 1.2;
+      }
+
+      .final-copy,
+      .conclusion-block p,
+      .source-list a {
+        margin: 0;
+        color: #182044;
+        font-size: 14px;
+        font-weight: 760;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+      }
+
+      .claim-list,
+      .source-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .claim-item {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 7px;
+        align-items: start;
+      }
+
+      .claim-name {
+        min-height: 24px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .claim-name.claude {
+        background: #fff1e4;
+        color: #c45d18;
+      }
+
+      .claim-name.gpt {
+        background: #e8f7f2;
+        color: #137863;
+      }
+
+      .claim-name.gemini {
+        background: #f0efff;
+        color: #5148d7;
+      }
+
+      .num {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--violet);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .compact-list {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .compact-list li {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .compact-list li::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        margin-top: 7px;
+        border-radius: 999px;
+        background: rgba(114, 87, 255, 0.78);
+      }
+
+      .step-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .step-list > li {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .step-body {
+        display: grid;
+        gap: 5px;
+      }
+
+      .source-list a {
+        color: #3f35d4;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+      }
+
+      @media (min-width: 720px) {
+        .screen {
+          width: min(100%, 760px);
+        }
+
+        .topic-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .topic-cell + .topic-cell {
+          border-left: 1px solid var(--line);
+          padding-left: 14px;
+        }
+
+        .analysis-body {
+          grid-template-columns: minmax(0, 1fr) 220px;
+          align-items: stretch;
+        }
+      }
+
+      @media (max-width: 374px) {
+        .screen {
+          padding: 14px 10px 20px;
+        }
+
+        .topbar {
+          grid-template-columns: 42px minmax(0, 1fr) 42px;
+        }
+
+        .icon-button {
+          width: 42px;
+          height: 42px;
+          border-radius: 16px;
+        }
+
+        .topbar-spacer {
+          width: 42px;
+          height: 42px;
+        }
+
+        .brand {
+          font-size: 24px;
+        }
+
+        .beta {
+          min-height: 25px;
+          padding: 0 9px;
+          font-size: 14px;
+        }
+
+        .topic-panel {
+          padding: 20px 14px 16px;
+        }
+
+        .speaker-avatar {
+          width: 52px;
+          height: 52px;
+        }
+
+        .speaker-avatar.is-ai {
+          width: 52px;
+          height: 52px;
+        }
+
+        .panel-head {
+          align-items: center;
+          flex-direction: row;
+        }
+
+        .analysis-card {
+          width: calc(100% - 8px);
+        }
+
+        .claim-item {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen">
+      <header class="topbar" aria-label="상단 이동 영역">
+        <button class="icon-button" type="button" aria-label="뒤로가기">
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5 8 12l7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <div class="brand">AI Talk Talk <span class="beta">Beta</span></div>
+        <span class="topbar-spacer" aria-hidden="true"></span>
+      </header>
+
+      <section class="panel topic-panel" aria-labelledby="topic-title">
+        <div class="topic-head">
+          <div>
+            <div class="topic-kicker-row">
+              <p class="section-kicker"><span class="mini-icon"><img src="assets/icon-topic.png" alt="" /></span>주제 정리</p>
+              <span class="status">✓ 완료</span>
+            </div>
+            <h1 id="topic-title">동아ST가 소분자 중심 R&amp;D를 넘어 AI BIO 혁신센터를 대규모로 확대하는 것이 지금 현실적으로 타당한가?</h1>
+          </div>
+        </div>
+        <p class="subtitle">사회자가 안건을 정리하고, 주제에 맞는 3개 관점을 동적으로 배정합니다.</p>
+
+        <div class="topic-grid" aria-label="토론 주제 요약">
+          <article class="topic-cell">
+            <span class="mini-icon"><img src="assets/icon-insight.png" alt="" /></span>
+            <div>
+              <h2>핵심 질문</h2>
+              <p>AI BIO 혁신센터가 R&amp;D 경쟁력에 실질적 도움이 되는가? 데이터·조직·외부협력 준비가 충분한가?</p>
+            </div>
+          </article>
+          <article class="topic-cell">
+            <span class="mini-icon"><img src="assets/icon-purpose.png" alt="" /></span>
+            <div>
+              <h2>토론 목적</h2>
+              <p>전략 전환 필요성과 실행 리스크를 함께 비교해 단계적 추진 방향을 도출</p>
+            </div>
+          </article>
+          <article class="topic-cell">
+            <span class="mini-icon"><img src="assets/icon-perspective.png" alt="" /></span>
+            <div>
+              <h2>토론 관점</h2>
+              <p>전략 전환 관점, 실행 역량 관점, 협력/투자 구조 관점</p>
+            </div>
+          </article>
+        </div>
+        <div class="participants-line" aria-label="참여 AI">
+          <img src="assets/participants-line-crop.png" alt="사회자, Claude, GPT, Gemini" />
+        </div>
+      </section>
+
+      <section class="panel debate-panel" aria-labelledby="debate-title">
+        <div class="panel-head">
+          <h2 id="debate-title" class="panel-title"><span class="mini-icon"><img src="assets/icon-perspective.png" alt="" /></span>3 관점 토론</h2>
+          <a class="summary-button" href="#final-summary">토론 결과</a>
+        </div>
+
+        <article class="moderator-card" style="--speaker-fg:#65401f;">
+          <div class="moderator-content">
+            <div class="moderator-portrait"><img src="assets/moderator-host.png" alt="" /></div>
+            <div>
+              <p class="moderator-title">사회자</p>
+              <p class="moderator-copy">주제는 "AI BIO 혁신센터 확대가 지금 현실적으로 타당한가?"입니다. 전략 전환, 실행 역량, 협력/투자 구조 관점에서 비교해 주세요.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="ai-turn is-left" style="--speaker-fg:var(--orange);--card-line:#f3d8bd;--card-main:var(--orange);--insight-line:#f4dec8;--insight-bg:var(--orange-soft);">
+          <div class="speaker-strip">
+            <div class="speaker-avatar is-ai"><img src="assets/avatar-claude-new.png" alt="" /></div>
+            <p class="speaker-name">Claude</p>
+          </div>
+            <div class="analysis-card">
+              <h3 class="analysis-title"><span class="inline-icon"><img src="assets/icon-proposal.png" alt="" /></span>전략 전환 관점</h3>
+              <div class="analysis-body">
+                <div class="points">
+                  <div>
+                    <h3>장점</h3>
+                    <ul>
+                      <li>바이오와 AI 중심 전환은 장기 R&amp;D 경쟁력 확보에 필요함</li>
+                      <li>질환·기술 포트폴리오를 재정의하는 계기가 될 수 있음</li>
+                      <li>후보물질 우선순위 판단과 중단 의사결정 속도를 높일 수 있음</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>단점</h3>
+                    <ul>
+                      <li>센터 설립 자체가 성과를 보장하지는 않음</li>
+                      <li>기존 포트폴리오 의사결정 구조가 그대로면 지원 조직에 머물 수 있음</li>
+                    </ul>
+                  </div>
+                </div>
+                <aside class="insight">
+                  <h3><span class="inline-icon"><img src="assets/icon-insight.png" alt="" /></span>인사이트</h3>
+                  <p>핵심은 센터의 규모가 아니라 포트폴리오 의사결정 방식을 실제로 바꾸는 권한입니다.</p>
+                </aside>
+              </div>
+            </div>
+        </article>
+
+        <article class="ai-turn is-right" style="--speaker-fg:var(--green);--card-line:#c7e8df;--card-main:var(--green);--insight-line:#cceee6;--insight-bg:var(--green-soft);">
+          <div class="speaker-strip">
+            <p class="speaker-name">GPT</p>
+            <div class="speaker-avatar is-ai"><img src="assets/avatar-gpt-new.png" alt="" /></div>
+          </div>
+            <div class="analysis-card">
+              <h3 class="analysis-title"><span class="inline-icon"><img src="assets/icon-perspective.png" alt="" /></span>실행 역량 관점</h3>
+              <div class="analysis-body">
+                <div class="points">
+                  <div>
+                    <h3>장점</h3>
+                    <ul>
+                      <li>데이터 표준화와 연구자 사용성이 갖춰지면 반복 의사결정이 빨라짐</li>
+                      <li>성과 기준을 명확히 잡으면 파일럿 검증이 가능함</li>
+                      <li>AI 적용 지점을 좁히면 초기 실패 비용을 줄일 수 있음</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>단점</h3>
+                    <ul>
+                      <li>데이터 품질이 낮으면 AI 도입 효과가 제한됨</li>
+                      <li>조직 권한과 성과 기준이 모호하면 현장 사용성이 떨어질 수 있음</li>
+                    </ul>
+                  </div>
+                </div>
+                <aside class="insight">
+                  <h3><span class="inline-icon"><img src="assets/icon-insight.png" alt="" /></span>인사이트</h3>
+                  <p>센터보다 먼저 데이터 품질, 연구자 사용성, 조직 권한, 성과 기준을 설계해야 합니다.</p>
+                </aside>
+              </div>
+            </div>
+        </article>
+
+        <article class="ai-turn is-left" style="--speaker-fg:var(--blue);--card-line:#d9d4ff;--card-main:var(--blue);--insight-line:#dfdcff;--insight-bg:var(--blue-soft);">
+          <div class="speaker-strip">
+            <div class="speaker-avatar is-ai"><img src="assets/avatar-gemini-new.png" alt="" /></div>
+            <p class="speaker-name">Gemini</p>
+          </div>
+            <div class="analysis-card">
+              <h3 class="analysis-title"><span class="inline-icon"><img src="assets/icon-purpose.png" alt="" /></span>협력/투자 구조 관점</h3>
+              <div class="analysis-body">
+                <div class="points">
+                  <div>
+                    <h3>장점</h3>
+                    <ul>
+                      <li>외부 AI 플랫폼, RNA/항체 전문기술과 결합하면 진입 속도를 높일 수 있음</li>
+                      <li>투자 게이트를 두면 무리한 내부화를 피할 수 있음</li>
+                      <li>규제·임상·CMC 협력 구조를 초기에 설계할 수 있음</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>단점</h3>
+                    <ul>
+                      <li>협력 파트너 선정 기준이 약하면 비용만 커질 수 있음</li>
+                      <li>외부 의존도가 높아질 경우 내부 학습 자산이 남지 않을 수 있음</li>
+                      <li>규제 대응과 IP 구조를 늦게 잡으면 사업화 리스크가 커짐</li>
+                    </ul>
+                  </div>
+                </div>
+                <aside class="insight">
+                  <h3><span class="inline-icon"><img src="assets/icon-insight.png" alt="" /></span>인사이트</h3>
+                  <p>자체 개발보다 외부 협력과 투자 게이트를 설계하는 컨트롤타워 역할이 핵심입니다.</p>
+                </aside>
+              </div>
+            </div>
+        </article>
+      </section>
+
+      <section id="final-summary" class="panel final-panel" aria-labelledby="final-title" tabindex="-1">
+        <h2 id="final-title" class="final-label"><span class="mini-icon"><img src="assets/icon-final.png" alt="" /></span>결론</h2>
+        <div class="conclusion-stack">
+          <section class="conclusion-block is-primary" aria-label="한 줄 정리">
+            <h3>한 줄 정리</h3>
+            <p class="final-copy">방향은 타당하지만, 바로 대규모 센터로 확장하기보다 핵심 파이프라인과 AI 적용 지점을 정한 뒤 단계적으로 검증하는 방식이 현실적입니다.</p>
+          </section>
+
+          <section class="conclusion-block" aria-label="주요 주장 비교">
+            <h3>주요 주장 비교</h3>
+            <div class="claim-list">
+              <p class="claim-item"><span class="claim-name claude">Claude</span><span>바이오와 AI 중심 전환은 장기 R&amp;D 경쟁력 확보를 위해 필요하지만, 포트폴리오 의사결정을 바꾸는 구조여야 한다고 봅니다.</span></p>
+              <p class="claim-item"><span class="claim-name gpt">GPT</span><span>센터 설립보다 데이터 품질, 연구자 사용성, 조직 권한, 성과 기준이 더 중요하다고 봅니다.</span></p>
+              <p class="claim-item"><span class="claim-name gemini">Gemini</span><span>자체 개발보다 외부 협력과 투자 게이트를 설계하는 컨트롤타워 역할이 핵심이라고 봅니다.</span></p>
+            </div>
+          </section>
+
+          <section class="conclusion-block" aria-label="합의된 부분">
+            <h3>합의된 부분</h3>
+            <ul class="compact-list">
+              <li>소분자 중심 R&amp;D만으로는 장기 성장 옵션이 제한될 수 있습니다.</li>
+              <li>AI BIO 혁신센터는 단순 지원 조직이 아니라 R&amp;D 의사결정 구조를 바꾸는 역할이어야 합니다.</li>
+              <li>처음부터 전면 확대하기보다 제한된 파이프라인에서 검증하는 것이 안전합니다.</li>
+            </ul>
+          </section>
+
+          <section class="conclusion-block" aria-label="의견이 갈린 부분">
+            <h3>의견이 갈린 부분</h3>
+            <ul class="compact-list">
+              <li>Claude는 전략적 전환의 필요성을 더 크게 봅니다.</li>
+              <li>GPT는 내부 실행 역량과 데이터 준비가 부족하면 실패 가능성이 크다고 봅니다.</li>
+              <li>Gemini는 센터의 성패가 내부 연구보다 외부 협력, 투자 게이트, 규제 대응 구조에 달려 있다고 봅니다.</li>
+            </ul>
+          </section>
+
+          <section class="conclusion-block" aria-label="현실적인 실행 방향">
+            <h3>현실적인 실행 방향</h3>
+            <ol class="step-list">
+              <li>
+                <span class="num">1</span>
+                <div class="step-body">
+                  <p>6~12개월 파일럿으로 시작합니다.</p>
+                  <ul class="compact-list">
+                    <li>질환 영역 1~2개</li>
+                    <li>AI 적용 지점 2~3개</li>
+                    <li>후보물질 우선순위, 개발기간 단축, 중단 판단 속도 같은 성과 기준 설정</li>
+                  </ul>
+                </div>
+              </li>
+              <li>
+                <span class="num">2</span>
+                <div class="step-body">
+                  <p>AI BIO 혁신센터의 권한을 명확히 합니다.</p>
+                  <ul class="compact-list">
+                    <li>단순 연구 지원 조직이 아니라 파이프라인 평가, 외부 협력 검토, 데이터 표준화 권한을 부여</li>
+                  </ul>
+                </div>
+              </li>
+              <li>
+                <span class="num">3</span>
+                <div class="step-body">
+                  <p>내부 개발과 외부 협력을 분리해서 운영합니다.</p>
+                  <ul class="compact-list">
+                    <li>내부화할 역량: 데이터 표준, 평가 기준, 질환별 전략</li>
+                    <li>외부 협력할 역량: AI 플랫폼, RNA/항체 전문기술, CRO/CMC/임상 지원</li>
+                  </ul>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <section class="conclusion-block" aria-label="근거 자료">
+            <h3>근거 자료</h3>
+            <div class="source-list">
+              <a href="https://content.govdelivery.com/accounts/USFDA/bulletins/359bfec">FDA, AI/ML in Drug Development 논의 자료</a>
+              <a href="https://www.fda.gov/regulatory-information/search-fda-guidance-documents/platform-technology-designation-program-drug-development">FDA, Platform Technology Designation Program</a>
+              <a href="https://www.mckinsey.com/industries/life-sciences/our-insights/generative-ai-in-the-pharmaceutical-industry-moving-from-hype-to-reality">McKinsey, Generative AI in the pharmaceutical industry</a>
+              <a href="https://www.nature.com/articles/d41573-024-00036-0">Nature Reviews Drug Discovery, AI drug discovery 현실 논의</a>
+              <a href="https://www.donga-st.com/en/oversea.php">Dong-A ST 공식 글로벌/R&amp;D 소개</a>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

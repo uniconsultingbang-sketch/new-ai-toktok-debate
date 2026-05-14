@@ -12,6 +12,9 @@ export type TopicType = "pharma" | "business" | "people" | "tech" | "general";
 export type FinalReport = {
   recommendation: string;
   summary: string;
+  mainClaims?: string[];
+  agreements?: string[];
+  disagreements?: string[];
   keyReasons: string[];
   keyRisks: string[];
   conditions: string[];
@@ -19,6 +22,9 @@ export type FinalReport = {
   evidenceSources?: string[];
   heading?: string;
   sectionLabels?: {
+    mainClaims?: string;
+    agreements?: string;
+    disagreements?: string;
     keyReasons?: string;
     keyRisks?: string;
     conditions?: string;
@@ -465,16 +471,26 @@ function normalizeFinalReport(value: FinalReport | null | undefined): FinalRepor
     return null;
   }
 
+  const mainClaims = value.mainClaims ?? value.keyReasons ?? [];
+  const agreements = value.agreements ?? value.conditions ?? [];
+  const disagreements = value.disagreements ?? value.keyRisks ?? [];
+
   return {
     ...value,
     recommendation: normalizeRecommendation(value.recommendation),
+    mainClaims,
+    agreements,
+    disagreements,
     keyReasons: value.keyReasons ?? [],
     keyRisks: value.keyRisks ?? [],
     conditions: value.conditions ?? [],
     nextActions: value.nextActions ?? [],
     evidenceSources: value.evidenceSources ?? [],
-    heading: value.heading ?? "최종 결론",
+    heading: value.heading ?? "결론",
     sectionLabels: {
+      mainClaims: value.sectionLabels?.mainClaims ?? "주요 주장 비교",
+      agreements: value.sectionLabels?.agreements ?? "합의된 부분",
+      disagreements: value.sectionLabels?.disagreements ?? "의견이 갈린 부분",
       keyReasons: value.sectionLabels?.keyReasons ?? "이유",
       keyRisks: value.sectionLabels?.keyRisks ?? "주의할 점",
       conditions: value.sectionLabels?.conditions ?? "핵심 쟁점",
