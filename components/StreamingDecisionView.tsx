@@ -644,7 +644,11 @@ function TopicSummaryMini({
 
 function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }) {
   if (event.speaker === "moderator") {
-    return <ModeratorTurn event={event} />;
+    return event.roundNumber === 1 || event.roundTitle === "주제 정리" ? (
+      <ModeratorTurn event={event} />
+    ) : (
+      <IssueSummaryTurn event={event} />
+    );
   }
 
   const meta = speakerMeta[event.speaker];
@@ -670,12 +674,7 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
         ) : null}
       </div>
       <div className="prof-analysis-card">
-        <h3 className="prof-analysis-title">
-          <span className="prof-inline-icon">
-            <img src={event.speaker === "claude" ? "/images/icon-proposal.png" : event.speaker === "gpt" ? "/images/icon-perspective.png" : "/images/icon-purpose.png"} alt="" />
-          </span>
-          {event.roundTitle}
-        </h3>
+        <h3 className="prof-analysis-title">{event.roundTitle}</h3>
         {analysis ? (
           <div className="prof-analysis-body">
             <div className="prof-analysis-points">
@@ -683,12 +682,7 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
               <AnalysisList title="단점" items={analysis.cons} />
             </div>
             <aside className="prof-insight-card">
-              <h4>
-                <span className="prof-inline-icon">
-                  <img src="/images/icon-insight.png" alt="" />
-                </span>
-                인사이트
-              </h4>
+              <h4>인사이트</h4>
               <p>{analysis.insight}</p>
             </aside>
           </div>
@@ -734,6 +728,30 @@ function ModeratorTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }
           <p className="prof-moderator-copy">{message}</p>
         </div>
       </div>
+    </article>
+  );
+}
+
+function IssueSummaryTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }) {
+  const analysis = formatAnalysisMessage(event.message);
+  const issueItems = [...analysis.pros, ...analysis.cons]
+    .map((item) => item.replace(/^(장점|단점|인사이트|핵심\s*의견)\s*[:：]\s*/i, "").trim())
+    .filter(Boolean);
+  const fallbackItems = formatReadableMessage(event.message)
+    .flatMap((paragraph) => splitSentences(paragraph))
+    .map((item) => item.replace(/^(장점|단점|인사이트|핵심\s*의견)\s*[:：]\s*/i, "").trim())
+    .filter(Boolean);
+  const items = (issueItems.length ? issueItems : fallbackItems).slice(0, 4);
+
+  return (
+    <article className="prof-issue-card">
+      <h3>{event.roundTitle || "핵심 쟁점"}</h3>
+      <ul>
+        {(items.length ? items : ["토론에서 갈린 기준과 확인할 조건을 정리하고 있습니다."]).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      {analysis.insight ? <p className="prof-issue-insight">{analysis.insight}</p> : null}
     </article>
   );
 }

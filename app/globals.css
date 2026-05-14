@@ -5276,14 +5276,19 @@ body {
 }
 
 .prof-round-divider {
+  display: flex;
   justify-content: flex-start;
   margin-bottom: 10px;
+  text-align: left;
 }
 
 .prof-round-divider strong {
+  display: block;
+  width: 100%;
   color: #5145ff;
   font-size: 18px;
   font-weight: 900;
+  text-align: left;
 }
 
 .prof-moderator-card {
@@ -5436,12 +5441,14 @@ body {
 .prof-analysis-title {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   margin: 0 0 12px;
   color: var(--card-main, #5145e8);
   font-size: 15px;
   font-weight: 900;
   line-height: 1.18;
+  text-align: left;
 }
 
 .prof-inline-icon {
@@ -5509,6 +5516,48 @@ body {
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0;
+}
+
+.prof-issue-card {
+  justify-self: start;
+  width: min(100%, 352px);
+  border: 1px solid rgba(218, 211, 255, 0.92);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 15px;
+  box-shadow: 0 8px 22px rgba(56, 50, 130, 0.06);
+}
+
+.prof-issue-card h3 {
+  margin: 0 0 10px;
+  color: #5145ff;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.prof-issue-card ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.prof-issue-card li,
+.prof-issue-insight {
+  color: #182044;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.48;
+  letter-spacing: 0;
+}
+
+.prof-issue-insight {
+  margin: 12px 0 0;
+  border-top: 1px solid rgba(218, 211, 255, 0.7);
+  padding-top: 11px;
+  color: #3d36b8;
 }
 
 .prof-ai-turn .prof-turn-message {

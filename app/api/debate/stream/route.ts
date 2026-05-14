@@ -1037,7 +1037,11 @@ ${history.map((item) => `- ${item}`).join("\n")}
 - 반드시 존댓말/합니다체로 씁니다. "한다", "된다", "필요하다", "판단한다" 같은 보고서식 반말 종결을 쓰지 않습니다.
 - summary는 첫 문장 1개를 핵심 결론으로 쓰고, 이어서 1~2문장만 보충합니다.
 - summary 첫 문장에는 recommendation 값을 자연스럽게 포함하되, "검증 가능한 범위부터 확인" 같은 일반론만 쓰지 말고 무엇을 왜 그렇게 판단하는지 드러냅니다.
+- summary 첫 문장은 정리된 주제의 핵심 명사를 반드시 포함합니다. "이 안건", "이 주제"처럼 대명사만으로 시작하지 마세요.
+- recommendation이 "조건부 추천"이면 어떤 조건이 충족되어야 하는지 첫 문장 또는 둘째 문장에 반드시 씁니다.
+- recommendation이 "보류" 또는 "비추천"이면 무엇이 부족하거나 위험해서 그런지 첫 문장에 반드시 씁니다.
 - summary와 nextActions는 정리된 주제와 핵심 질문에 직접 답해야 합니다. 어떤 안건에도 붙일 수 있는 문장은 실패입니다.
+- nextActions는 "확인한다", "검토한다"만 쓰지 말고 담당 범위, 검증 대상, 중단 기준, 다음 의사결정 중 최소 2가지를 포함합니다.
 - mainClaims는 Claude, GPT, Gemini의 주요 주장을 각각 1개씩 비교합니다.
 - agreements는 세 관점이 공통으로 인정한 내용을 씁니다.
 - disagreements는 의견이 갈린 부분이나 더 검증해야 할 차이를 씁니다.
@@ -1135,6 +1139,7 @@ function fallbackDecisionTone(input: NormalizedInput, profile: TopicProfile): { 
     ? input.agenda.inferredConcerns.slice(0, 2).join(" / ")
     : input.risks || "불확실성";
   const subject = input.agenda.topic;
+  const question = input.agenda.coreQuestion.replace(/[?？]\s*$/, "");
   const hasStrongRisk = /(규제|임상|안전|부작용|법률|개인정보|보안|책임|손실|큰 비용|환자|투자)/.test(
     `${input.originalContent} ${risks}`,
   );
@@ -1143,20 +1148,20 @@ function fallbackDecisionTone(input: NormalizedInput, profile: TopicProfile): { 
   if (hasClearLowRiskCue && profile.type === "general") {
     return {
       recommendation: "추천",
-      summary: `결론은 ${subject}을 확인 비용이 작고 되돌리기 쉬운 선택이라면 추천 쪽으로 보는 것이 현실적입니다. 핵심은 얻는 편익이 불편이나 실패 비용보다 큰지입니다. 정보가 부족하면 손실이 작은 선택을 우선하는 편이 안전합니다.`,
+      summary: `결론은 ${subject}에 대해 확인 비용이 작고 되돌리기 쉬운 선택이라면 추천입니다. ${question}라는 질문에는 얻는 편익이 불편이나 실패 비용보다 큰지로 답해야 합니다. 정보가 부족하면 손실이 작은 선택을 우선하는 편이 안전합니다.`,
     };
   }
 
   if ((input.agenda.complexity === "complex" || profile.type === "pharma") && hasStrongRisk) {
     return {
       recommendation: "보류",
-      summary: `결론은 ${subject}을 지금 바로 실행하기보다 핵심 근거를 먼저 확인하는 보류에 가깝습니다. 특히 ${focus || "근거"} 기준을 확인하지 않으면 실행 판단이 추측에 가까워집니다. 남아 있는 리스크는 ${risks}입니다.`,
+      summary: `결론은 ${subject}에 대해 ${risks}이 아직 크기 때문에 보류에 가깝습니다. ${question}라는 질문에는 ${focus || "근거"} 기준을 먼저 확인해야 답할 수 있습니다. 이 근거 없이 진행하면 실행 판단이 추측에 가까워집니다.`,
     };
   }
 
   return {
     recommendation: "조건부 추천",
-    summary: `결론은 ${subject}을 전면 실행이 아니라 작은 범위에서 검증하며 추진하는 조건부 추천으로 보는 것이 현실적입니다. 핵심 기준인 ${focus || "근거"}를 먼저 확인해 실제 진행할 범위와 멈출 기준을 정해야 합니다. 남아 있는 리스크는 ${risks}입니다.`,
+    summary: `결론은 ${subject}에 대해 ${focus || "핵심 기준"}를 작은 범위에서 먼저 확인한다는 조건부 추천입니다. ${question}라는 질문에는 전면 실행보다 검증 대상과 멈출 기준을 정한 단계적 추진이 더 현실적입니다. 남아 있는 리스크는 ${risks}입니다.`,
   };
 }
 
