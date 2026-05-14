@@ -1,5 +1,50 @@
 # AI Talk Talk UIUX 작업 로그
 
+## 2026-05-14 - AI Talk Talk_UIUX 개발 B Vercel 배포 확인
+
+### 날짜
+
+- 2026-05-14
+
+### 작업한 채팅방
+
+- AI Talk Talk_UIUX 개발 B
+
+### 수정한 화면
+
+- 홈 화면 문구
+- 이전 토론 기록 서랍
+- 토론 진행/결과 화면 빌드 안정화
+
+### 수정한 파일
+
+- `components/DecisionDashboard.tsx`
+- `components/StreamingDecisionView.tsx`
+- `app/globals.css`
+- `docs/work-log/design-work-log.md`
+
+### 확인한 내용
+
+- 홈 화면 문구를 `다양한 주제에 대해 토론해보세요.`로 반영했습니다.
+- 입력 placeholder를 `주제를 입력하세요...`로 반영했습니다.
+- Vercel 배포 전 `npm run build`, `npx tsc --noEmit` 통과를 확인했습니다.
+- 토론 화면의 `roundTitle` 타입 확인을 좁게 보정해 production build가 통과되도록 했습니다.
+- GitHub `main`에 커밋 후 Vercel production 배포 `READY` 상태를 확인했습니다.
+- 운영 URL에서 demo03 세션으로 홈 화면 새 문구가 반영된 것을 확인했습니다.
+
+### 남은 이슈
+
+- Vercel의 고유 배포 URL은 인증 보호가 걸려 있어 직접 공개 확인은 대표 운영 URL 기준으로 진행했습니다.
+- QA는 실제 모바일 브라우저에서 360x800, 390x844, 412x915, 430x932를 다시 확인해야 합니다.
+
+### QA나 PM 채팅방에 전달할 말
+
+```text
+AI Talk Talk_UIUX 개발 B 변경 사항을 GitHub main에 반영했고 Vercel production 배포 READY 상태를 확인했습니다.
+운영 URL에서 demo03 세션으로 홈 화면 문구 `다양한 주제에 대해 토론해보세요.`와 placeholder `주제를 입력하세요...` 반영을 확인했습니다.
+QA에서는 대표 운영 URL 기준으로 모바일 360/390/412/430 폭에서 홈 화면, 이전 토론 기록 서랍, 토론 상세 화면을 다시 확인해 주세요.
+```
+
 ## 2026-05-14 - AI Talk Talk_UIUX 개발 C 채팅 AI 아이콘 크기 축소
 
 ### 날짜
