@@ -139,7 +139,7 @@ export function DecisionDashboard() {
 
     try {
       await saveDecisionAsync(decision, ownerId);
-      window.location.assign(`/decisions/${decision.id}`);
+      window.location.assign(`/decisions/${decision.id}?start=1`);
     } catch {
       setIsStarting(false);
       setFormError("토론방을 여는 중 문제가 생겼습니다. 새로고침 후 다시 눌러 주세요.");

@@ -126,6 +126,10 @@ const finalSectionLabels = {
 const unstableAiMessage =
   "토론을 정리하는 중 AI 응답이 불안정합니다. 입력하신 안건은 저장되어 있습니다. 잠시 후 다시 시도해 주세요.";
 
+const streamBudgetMs = readPositiveNumber(process.env.DEBATE_STREAM_BUDGET_MS, 45_000);
+const providerTimeoutMs = readPositiveNumber(process.env.AI_PROVIDER_TIMEOUT_MS, 12_000);
+const maxLiveRotations = readRotationLimit(process.env.DEBATE_MAX_ROTATIONS, 1);
+
 export async function POST(request: Request) {
   let rawInput: DebateInput;
 
@@ -183,9 +187,15 @@ export async function POST(request: Request) {
       const emit = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       const history: string[] = [];
       const evidenceSources = new Set(profile.defaultSources);
+      const startedAt = Date.now();
+      const hasBudget = (reserveMs = 0) => Date.now() - startedAt + reserveMs < streamBudgetMs;
 
       try {
         for (const plan of createTurnPlans(input)) {
+          if (!hasBudget(8_000)) {
+            break;
+          }
+
           const fallback = fallbackTurn(input, profile, plan, history);
           const result = input.devMode === "quick"
             ? { message: fallback, status: "fallback" as const }
@@ -227,18 +237,33 @@ export async function POST(request: Request) {
           extractUrls(message).forEach((url) => evidenceSources.add(url));
         }
 
+        const finalReport =
+          input.devMode === "quick" || hasBudget(12_000)
+            ? await generateFinalReport(input, profile, history, evidenceSources)
+            : fallbackFinal(input, profile, Array.from(evidenceSources));
+
         emit({
           type: "final",
-          finalReport: await generateFinalReport(input, profile, history, evidenceSources),
+          finalReport,
           topicType: profile.type,
         });
         emit({ type: "done" });
       } catch (error) {
         console.error("[debate-stream] stream failed", error);
-        emit({
-          type: "error",
-          message: unstableAiMessage,
-        });
+        try {
+          emit({
+            type: "final",
+            finalReport: fallbackFinal(input, profile, Array.from(evidenceSources)),
+            topicType: profile.type,
+          });
+          emit({ type: "done" });
+        } catch (fallbackError) {
+          console.error("[debate-stream] fallback final failed", fallbackError);
+          emit({
+            type: "error",
+            message: unstableAiMessage,
+          });
+        }
       } finally {
         controller.close();
       }
@@ -578,7 +603,22 @@ async function askGemini(prompt: string) {
 }
 
 async function fetchJson<T>(url: string, init: RequestInit, provider: string): Promise<T> {
-  const response = await fetch(url, init);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), providerTimeoutMs);
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, { ...init, signal: init.signal ?? controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`${provider} request timed out after ${providerTimeoutMs}ms`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -1335,9 +1375,8 @@ JSON 형식:
   }
 
   if (!isGenericFallbackFinalUsable(fallback)) {
-    throw new Error(unstableAiMessage);
+    console.error("[debate-stream] generic fallback final did not pass validation; returning it to avoid an unfinished stream");
   }
-
   return fallback;
 }
 
@@ -1640,15 +1679,10 @@ function normalizeComplexity(value: unknown, fallback: AgendaComplexity): Agenda
 }
 
 function rotationCountForComplexity(complexity: AgendaComplexity, value: unknown): 1 | 2 | 3 {
-  if (complexity === "simple") {
-    return 1;
-  }
-
-  if (complexity === "complex") {
-    return 3;
-  }
-
-  return 2;
+  const requested = complexity === "simple" ? 1 : complexity === "complex" ? 3 : 2;
+  const normalizedRequested = clampRotations(typeof value === "number" ? Math.min(value, requested) : requested);
+  const capped = Math.min(normalizedRequested, maxLiveRotations);
+  return capped === 1 ? 1 : capped === 3 ? 3 : 2;
 }
 
 function normalizeDiscussionFrames(value: unknown, agenda: Pick<InterpretedAgenda, "topic" | "complexity" | "discussionFrames">, rotationCount: 1 | 2 | 3) {
@@ -1771,6 +1805,24 @@ function clampRotations(value: unknown): 1 | 2 | 3 {
 
   const rounded = Math.min(3, Math.max(1, Math.round(numberValue)));
   return rounded === 1 ? 1 : rounded === 3 ? 3 : 2;
+}
+
+function readRotationLimit(value: unknown, fallback: 1 | 2 | 3): 1 | 2 | 3 {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  return clampRotations(value);
+}
+
+function readPositiveNumber(value: unknown, fallback: number) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue) || numberValue <= 0) {
+    return fallback;
+  }
+
+  return numberValue;
 }
 
 function hasAnyModelKey() {

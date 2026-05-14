@@ -97,6 +97,9 @@ const speakerAvatarSrc: Partial<Record<SpeakerId, string>> = {
   gemini: "/images/avatar-gemini-new.png",
 };
 
+const interruptedStreamMessage =
+  "토론을 정리하는 중 연결이 불안정했습니다. 입력하신 안건은 저장되어 있습니다. 다시 시도해 주세요.";
+
 export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   const [decision, setDecision] = useState<DecisionRecord | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -125,18 +128,35 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   useEffect(() => {
     window.history.scrollRestoration = "manual";
     let isMounted = true;
+    const shouldStartStream = new URLSearchParams(window.location.search).get("start") === "1";
 
     function showDecision(nextDecision: DecisionRecord) {
       if (!isMounted) {
         return;
       }
 
+      const shouldResume = shouldStartStream && nextDecision.status === "running" && !nextDecision.finalReport;
+      const displayDecision: DecisionRecord =
+        !shouldResume && nextDecision.status === "running" && !nextDecision.finalReport
+          ? {
+              ...nextDecision,
+              status: "paused",
+              error: nextDecision.error ?? interruptedStreamMessage,
+            }
+          : nextDecision;
+
       setNotFound(false);
-      setDecision(nextDecision);
+      setDecision(displayDecision);
       window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
       window.setTimeout(() => window.scrollTo({ top: 0, behavior: "auto" }), 80);
 
-      if (nextDecision.status === "running" && !nextDecision.finalReport) {
+      if (!shouldResume && displayDecision !== nextDecision) {
+        const ownerId = getDecisionOwnerId(displayDecision, ownerIdRef.current);
+        void saveDecisionAsync(displayDecision, ownerId);
+      }
+
+      if (shouldResume) {
+        window.history.replaceState(null, "", window.location.pathname);
         startStream(nextDecision, nextDecision.events.length > 0);
       }
     }
@@ -256,6 +276,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    let receivedTerminalEvent = false;
 
     try {
       const response = await fetch("/api/debate/stream", {
@@ -296,19 +317,31 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
             continue;
           }
 
-          enqueueIncoming(JSON.parse(line) as IncomingEvent);
+          const incoming = JSON.parse(line) as IncomingEvent;
+          if (incoming.type === "final" || incoming.type === "error") {
+            receivedTerminalEvent = true;
+          }
+          enqueueIncoming(incoming);
         }
       }
 
       if (buffer.trim()) {
-        enqueueIncoming(JSON.parse(buffer) as IncomingEvent);
+        const incoming = JSON.parse(buffer) as IncomingEvent;
+        if (incoming.type === "final" || incoming.type === "error") {
+          receivedTerminalEvent = true;
+        }
+        enqueueIncoming(incoming);
+      }
+
+      if (!receivedTerminalEvent) {
+        enqueueIncoming({ type: "error", message: interruptedStreamMessage });
       }
     } catch (error) {
       if (controller.signal.aborted) {
         return;
       }
 
-      const message = error instanceof Error ? error.message : "토론을 이어가는 중 문제가 생겼습니다. 다시 시작해 주세요.";
+      const message = error instanceof Error && error.message ? error.message : interruptedStreamMessage;
       enqueueIncoming({ type: "error", message });
     } finally {
       setIsStreaming(false);

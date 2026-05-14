@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/ai-talk-og.png",
+        url: "/images/ai-talk-og-v0512.png",
         width: 1200,
         height: 630,
         alt: "AI Talk Talk",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "AI Talk Talk",
     description: "Claude, GPT, Gemini가 세 관점으로 토론하고 결론을 정리합니다.",
-    images: ["/images/ai-talk-og.png"],
+    images: ["/images/ai-talk-og-v0512.png"],
   },
 };
 
