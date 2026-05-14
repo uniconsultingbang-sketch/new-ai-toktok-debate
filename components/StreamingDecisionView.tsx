@@ -104,7 +104,6 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   const [thinkingSpeaker, setThinkingSpeaker] = useState<SpeakerId | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [isQuestionExpanded, setIsQuestionExpanded] = useState(false);
   const [showTopButton, setShowTopButton] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -466,7 +465,6 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
   }
 
   const questionText = decision.content || decision.title;
-  const canExpandQuestion = questionText.length > 46;
   const topicSummary = getTopicSummary(decision);
   const discussionFrames = getDiscussionFrames(decision.events);
   const topicPurpose = getTopicPurpose(decision);
@@ -511,12 +509,7 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
               {statusText[decision.status]}
             </span>
           </div>
-          <h1 className={`prof-detail-title ${isQuestionExpanded ? "is-expanded" : ""}`}>{questionText}</h1>
-          {canExpandQuestion ? (
-            <button type="button" onClick={() => setIsQuestionExpanded((value) => !value)} className="prof-detail-expand">
-              {isQuestionExpanded ? "접기" : "펼쳐보기"}
-            </button>
-          ) : null}
+          <h1 className="prof-detail-title">{questionText}</h1>
 
           <p className="prof-topic-subtitle">사회자가 안건을 정리하고, 주제에 맞는 3개 관점으로 토론합니다.</p>
 
@@ -655,7 +648,7 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
   }
 
   const meta = speakerMeta[event.speaker];
-  const message = event.roundNumber === 1 ? null : formatStructuredMessage(event.message);
+  const analysis = event.roundNumber === 1 ? null : formatAnalysisMessage(event.message);
   const avatarSrc = speakerAvatarSrc[event.speaker];
   const isRight = event.speaker === "gpt";
 
@@ -683,29 +676,44 @@ function DebateTurn({ event }: { event: Extract<DebateEvent, { type: "turn" }> }
           </span>
           {event.roundTitle}
         </h3>
-        <div className="prof-turn-message">
-        {message ? (
-          <>
-            <strong className="prof-turn-headline">{message.headline}</strong>
-            {message.paragraphs.map((paragraph, index) => (
+        {analysis ? (
+          <div className="prof-analysis-body">
+            <div className="prof-analysis-points">
+              <AnalysisList title="장점" items={analysis.pros} />
+              <AnalysisList title="단점" items={analysis.cons} />
+            </div>
+            <aside className="prof-insight-card">
+              <h4>
+                <span className="prof-inline-icon">
+                  <img src="/images/icon-insight.png" alt="" />
+                </span>
+                인사이트
+              </h4>
+              <p>{analysis.insight}</p>
+            </aside>
+          </div>
+        ) : (
+          <div className="prof-turn-message">
+            {formatReadableMessage(event.message).map((paragraph, index) => (
               <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
             ))}
-            {message.bullets.length ? (
-              <ul>
-                {message.bullets.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            ) : null}
-          </>
-        ) : (
-          formatReadableMessage(event.message).map((paragraph, index) => (
-            <p key={`${event.id}-paragraph-${index}`}>{paragraph}</p>
-          ))
+          </div>
         )}
-        </div>
       </div>
     </article>
+  );
+}
+
+function AnalysisList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <h4>{title}</h4>
+      <ul>
+        {(items.length ? items : ["토론 내용이 정리되면 표시됩니다."]).slice(0, 3).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -1037,6 +1045,116 @@ function formatStructuredMessage(value: string) {
     paragraphs,
     bullets,
   };
+}
+
+function formatAnalysisMessage(value: string) {
+  const sanitized = sanitizeDisplayText(value)
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+  const sections = parseAnalysisSections(sanitized);
+
+  if (sections.pros.length || sections.cons.length || sections.insight) {
+    return {
+      pros: sections.pros,
+      cons: sections.cons,
+      insight: sections.insight || sections.headline || "핵심 판단 기준을 더 구체화해야 합니다.",
+    };
+  }
+
+  const fallback = formatStructuredMessage(sanitized);
+  const riskSentences = fallback.paragraphs.filter((paragraph) => /(다만|하지만|리스크|위험|부담|비용|기준|없으면|부족|어렵)/.test(paragraph));
+  const positiveSentences = fallback.paragraphs.filter((paragraph) => !riskSentences.includes(paragraph));
+
+  return {
+    pros: [...fallback.bullets, ...positiveSentences].slice(0, 3),
+    cons: (riskSentences.length ? riskSentences : fallback.paragraphs.slice(1)).slice(0, 3),
+    insight: fallback.headline,
+  };
+}
+
+function parseAnalysisSections(value: string) {
+  const result = {
+    headline: "",
+    pros: [] as string[],
+    cons: [] as string[],
+    insight: "",
+  };
+  let current: "headline" | "pros" | "cons" | "insight" = "headline";
+
+  for (const rawLine of value.split(/\n+/)) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const normalized = line.replace(/\s/g, "");
+
+    if (/^(핵심의견|핵심|의견)[:：]/.test(normalized)) {
+      result.headline = cleanAnalysisLine(line.replace(/^(핵심\s*의견|핵심|의견)\s*[:：]\s*/i, ""));
+      current = "headline";
+      continue;
+    }
+
+    if (/^장점[:：]?$/.test(normalized)) {
+      current = "pros";
+      continue;
+    }
+
+    if (/^단점[:：]?$/.test(normalized)) {
+      current = "cons";
+      continue;
+    }
+
+    if (/^인사이트[:：]?$/.test(normalized)) {
+      current = "insight";
+      continue;
+    }
+
+    if (/^장점[:：]/.test(line)) {
+      result.pros.push(cleanAnalysisLine(line.replace(/^장점\s*[:：]\s*/i, "")));
+      current = "pros";
+      continue;
+    }
+
+    if (/^단점[:：]/.test(line)) {
+      result.cons.push(cleanAnalysisLine(line.replace(/^단점\s*[:：]\s*/i, "")));
+      current = "cons";
+      continue;
+    }
+
+    if (/^인사이트[:：]/.test(line)) {
+      result.insight = cleanAnalysisLine(line.replace(/^인사이트\s*[:：]\s*/i, ""));
+      current = "insight";
+      continue;
+    }
+
+    const clean = cleanAnalysisLine(line);
+
+    if (!clean) {
+      continue;
+    }
+
+    if (current === "pros") {
+      result.pros.push(clean);
+    } else if (current === "cons") {
+      result.cons.push(clean);
+    } else if (current === "insight") {
+      result.insight = result.insight ? `${result.insight} ${clean}` : clean;
+    } else if (!result.headline) {
+      result.headline = clean;
+    }
+  }
+
+  result.pros = result.pros.filter(Boolean).slice(0, 3);
+  result.cons = result.cons.filter(Boolean).slice(0, 3);
+  result.insight = result.insight.trim();
+  return result;
+}
+
+function cleanAnalysisLine(value: string) {
+  return value.replace(/^[-•*]\s*/, "").trim();
 }
 
 function isConnectionOnlySentence(value: string) {

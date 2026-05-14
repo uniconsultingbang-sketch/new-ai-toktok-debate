@@ -183,7 +183,6 @@ export async function POST(request: Request) {
       const emit = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       const history: string[] = [];
       const evidenceSources = new Set(profile.defaultSources);
-      let fallbackTurnCount = 0;
 
       try {
         for (const plan of createTurnPlans(input)) {
@@ -200,15 +199,6 @@ export async function POST(request: Request) {
           }
 
           const message = useFallback ? fallback : candidate;
-          const isFallbackMessage = message === fallback;
-
-          if (isFallbackMessage && plan.phase !== "topic") {
-            fallbackTurnCount += 1;
-          }
-
-          if (!input.devMode && fallbackTurnCount >= 2) {
-            throw new Error(unstableAiMessage);
-          }
 
           const meta = speakerMeta[plan.speaker];
 
@@ -614,9 +604,19 @@ ${input.agenda.topic}
 핵심 질문:
 ${input.agenda.coreQuestion}
 - 추가 설명은 붙이지 않습니다.`
-    : `- 첫 문장은 핵심 의견 1문장으로 씁니다. 화면에서 이 문장만 굵게 보입니다.
-- 그 아래 본문은 2~3문장으로 정리합니다.
-- 항목으로 나눌 수 있는 내용은 "- 항목" 형태의 점 목록으로 씁니다.
+    : `- 반드시 존댓말/합니다체로 씁니다. "한다", "된다", "필요하다", "판단한다" 같은 보고서식 반말 종결을 쓰지 않습니다.
+- 아래 형식을 그대로 지킵니다.
+핵심 의견: 핵심 판단 1문장
+장점:
+- 장점 1
+- 장점 2
+단점:
+- 단점 1
+- 단점 2
+인사이트:
+핵심 인사이트 1문장
+- 장점과 단점은 각각 2개 이내로 씁니다.
+- 인사이트는 반드시 완결된 존댓말 1문장으로 씁니다.
 - 첫 문장을 "동의합니다", "인정합니다", "타당합니다" 같은 맞장구만으로 끝내지 않습니다.
 - 직전 발언이 있으면 첫 문장 안에 그 논리나 전제를 받은 뒤, 바로 자신의 핵심 판단을 함께 말합니다.
 - 정리된 주제나 핵심 질문 문장을 첫머리에 그대로 반복하지 않습니다. 필요한 경우 "이 안건", "그 전제", "이 판단"처럼 받아서 말합니다.
@@ -660,6 +660,7 @@ ${recent}
 출력 규칙:
 - 한국어만 사용합니다.
 - 이름으로 시작하지 않습니다.
+- 존댓말/합니다체만 사용합니다.
 - 마지막 문장은 반드시 완결된 한국어 문장으로 끝냅니다.
 ${roleRule}
 ${outputRule}
@@ -679,30 +680,119 @@ function fallbackTurn(input: NormalizedInput, profile: TopicProfile, plan: TurnP
   }
 
   if (plan.phase === "opening" && plan.speaker === "claude") {
-    return `이 안건은 전면 추진보다 작은 검증으로 가능성을 확인하는 쪽이 현실적입니다. 사회자가 정리한 기준처럼 핵심은 가능성 자체보다 실제 검증 순서입니다. 사용자의 불편이나 조직의 비효율을 줄일 여지는 있지만, 처음부터 크게 밀기보다 검토 기준별로 반응을 볼 수 있는 범위를 좁혀야 합니다.`;
+    return makeAnalysisTurn(
+      "사회자가 정리한 기준을 보면 이 안건은 가능성을 버리기보다 작은 검증으로 먼저 확인하는 쪽이 현실적입니다.",
+      [
+        `${subject}은 기존 방식의 한계를 보완할 기회가 있습니다`,
+        `처음부터 전면 추진하지 않으면 비용과 실패 부담을 줄일 수 있습니다`,
+      ],
+      [
+        "검증 범위가 흐리면 실행 효과를 판단하기 어렵습니다",
+        "초기 기대가 과하면 실제 성과보다 조직 부담이 먼저 커질 수 있습니다",
+      ],
+      "핵심은 크게 선언하는 것이 아니라 작게 증명할 수 있는 첫 범위를 정하는 것입니다.",
+    );
   }
 
   if (plan.phase === "opening" && plan.speaker === "gpt") {
-    return `성공 기준과 중단 기준이 없으면 이 안건은 실행보다 비용 누수가 먼저 생길 수 있습니다. Claude가 말한 가능성은 인정하지만, 가능성이 있다는 것과 실제로 비용을 감당하며 실행할 수 있다는 것은 다른 문제입니다. 지금은 ${input.risks || "수요, 비용, 책임 주체, 실패했을 때의 손실"}을 확인하지 않으면 낙관이 너무 앞설 수 있습니다.`;
+    return makeAnalysisTurn(
+      "Claude가 말한 가능성은 인정하지만, 성공 기준과 중단 기준이 없으면 비용 누수가 먼저 생길 수 있습니다.",
+      [
+        "작게 시작하면 리스크를 조기에 확인할 수 있습니다",
+        "성과 기준을 숫자로 잡으면 확대 여부를 판단하기 쉽습니다",
+      ],
+      [
+        `${input.risks || "수요, 비용, 책임 주체, 실패했을 때의 손실"}을 확인하지 않으면 낙관이 앞설 수 있습니다`,
+        "책임자와 비용 한도가 없으면 실험이 장기 과제로 늘어질 수 있습니다",
+      ],
+      "가능성보다 먼저 확인해야 할 것은 돈과 시간, 책임을 어디까지 감당할지입니다.",
+    );
   }
 
   if (plan.phase === "opening" && plan.speaker === "gemini") {
-    return `양쪽 의견을 합치면 핵심은 진행 여부가 아니라 검증 조건을 먼저 세우는 것입니다. Claude는 가능성을 봤고 GPT는 비용과 실패 기준을 짚었습니다. 그래서 판단 기준은 검토 항목별로 나누고, 각 기준에서 진행과 보류의 조건을 분명히 하는 것이 좋습니다.`;
+    return makeAnalysisTurn(
+      "두 의견을 합치면 핵심은 찬반보다 검증 조건을 먼저 세우는 것입니다.",
+      [
+        "Claude의 관점처럼 가능성을 완전히 닫을 필요는 없습니다",
+        "검토 기준을 나누면 작은 실행으로도 판단 근거를 만들 수 있습니다",
+      ],
+      [
+        "GPT의 지적처럼 실패 기준이 없으면 실행 판단이 흐려집니다",
+        "진행과 보류의 조건이 없으면 회의 결론이 실제 행동으로 이어지기 어렵습니다",
+      ],
+      `${focusText} 기준으로 성공 조건과 중단 조건을 먼저 합의해야 합니다.`,
+    );
   }
 
   if (plan.phase === "discussion" && plan.speaker === "claude") {
-    return `${plan.roundTitle} 쟁점에서는 가장 작은 범위의 실험이 가능성을 살리는 방법입니다. ${previousName}의 우려는 필요하지만, 그것이 곧 보류만 뜻하지는 않습니다. 저는 전면 추진보다 제한된 실험으로 전환해 검토 기준을 확인하는 접근이 현실적이라고 봅니다.`;
+    return makeAnalysisTurn(
+      `${previousName}의 우려를 반영하더라도, ${plan.roundTitle} 쟁점은 작은 실험으로 가능성을 확인할 수 있습니다.`,
+      [
+        "제한된 범위에서 시작하면 조직의 학습 비용을 통제할 수 있습니다",
+        "검증 결과가 좋을 때만 확대하면 전략적 선택지를 유지할 수 있습니다",
+      ],
+      [
+        "실험 대상이 너무 넓으면 무엇이 성공 요인인지 알기 어렵습니다",
+        "현장 참여가 약하면 결과가 실제 운영 변화로 이어지지 않을 수 있습니다",
+      ],
+      "가능성을 살리려면 먼저 작고 측정 가능한 단위로 쪼개야 합니다.",
+    );
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gpt") {
-    return `제한된 실험도 실패 기준이 없으면 작은 실행이 아니라 작은 낭비가 될 수 있습니다. Claude의 제안은 이전보다 현실적이지만, 성공 기준과 중단 기준이 없으면 시간을 쓰고도 결론을 못 냅니다. 최소한 비용 한도, 검증 기간, 책임자, 실패로 판단할 조건을 먼저 정해야 합니다.`;
+    return makeAnalysisTurn(
+      "Claude의 제한된 실험 제안은 현실적이지만, 실패 기준이 없으면 작은 실행도 낭비가 될 수 있습니다.",
+      [
+        "비용 한도와 검증 기간을 정하면 손실을 통제할 수 있습니다",
+        "책임자를 정하면 실행 후 평가가 흐려지는 문제를 줄일 수 있습니다",
+      ],
+      [
+        "성과 기준이 없으면 시간을 쓰고도 결론을 내기 어렵습니다",
+        "중단 조건이 약하면 실패한 실험도 관성적으로 계속될 수 있습니다",
+      ],
+      "이 안건은 시작 여부보다 멈출 수 있는 구조를 먼저 설계해야 안전합니다.",
+    );
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gemini") {
-    return `균형점은 가능성을 확인하되 비용과 책임을 통제하는 조건부 검증입니다. GPT의 지적까지 반영하면 결론은 단순한 찬반이 아닙니다. 이 안건은 가능성을 버리지 않되, ${focusText} 기준에서 성공 조건과 중단 조건을 먼저 정해야 합니다.`;
+    return makeAnalysisTurn(
+      "GPT의 지적까지 반영하면 균형점은 가능성을 확인하되 비용과 책임을 통제하는 조건부 검증입니다.",
+      [
+        "작은 검증은 Claude가 말한 가능성을 살릴 수 있습니다",
+        `${focusText} 기준을 쓰면 토론 결과를 실행 판단으로 연결할 수 있습니다`,
+      ],
+      [
+        "성과와 중단 기준이 없으면 조건부 검증이라는 말이 형식에 그칠 수 있습니다",
+        "초기 범위가 넓으면 리스크 통제가 어려워집니다",
+      ],
+      "결론은 실행을 미루는 것이 아니라 검증 가능한 실행으로 좁히는 것입니다.",
+    );
   }
 
-  return `두 의견을 종합하면 이 안건의 핵심 쟁점은 ${focusText}입니다. 실제 수요와 근거가 충분한지, 기존 방식보다 나은지, 비용과 운영 부담을 감당할 수 있는지, 실패했을 때 멈출 기준이 있는지를 확인해야 합니다. 최종 결론은 이 기준을 확인할 수 있는 작은 실행 계획이 있느냐에 달려 있습니다.`;
+  return makeAnalysisTurn(
+    `두 의견을 종합하면 이 안건의 핵심 쟁점은 ${focusText}입니다.`,
+    [
+      "실제 수요와 근거를 확인하면 진행 여부를 더 명확히 판단할 수 있습니다",
+      "기존 방식보다 나은 지점을 찾으면 실행 명분이 생깁니다",
+    ],
+    [
+      "비용과 운영 부담을 감당할 수 없으면 좋은 의도도 지속되기 어렵습니다",
+      "실패했을 때 멈출 기준이 없으면 의사결정 책임이 흐려집니다",
+    ],
+    "최종 판단은 작은 실행 계획과 중단 기준을 동시에 만들 수 있는지에 달려 있습니다.",
+  );
+}
+
+function makeAnalysisTurn(headline: string, pros: string[], cons: string[], insight: string) {
+  return [
+    `핵심 의견: ${headline}`,
+    "장점:",
+    ...pros.slice(0, 2).map((item) => `- ${item}`),
+    "단점:",
+    ...cons.slice(0, 2).map((item) => `- ${item}`),
+    "인사이트:",
+    insight,
+  ].join("\n");
 }
 
 function shouldUseFallback(message: string, plan: TurnPlan, history: string[], input: NormalizedInput) {
@@ -710,7 +800,10 @@ function shouldUseFallback(message: string, plan: TurnPlan, history: string[], i
 
   if (!normalized) return true;
   if (containsForbiddenTone(normalized)) return true;
-  if (countSentences(normalized) > 5) return true;
+  if (plan.phase !== "topic" && containsNonPoliteEnding(normalized)) return true;
+  if (plan.phase !== "topic" && normalized.length > 850) return true;
+  if (plan.phase !== "topic" && !hasAnalysisSections(normalized)) return true;
+  if (plan.phase === "topic" && countSentences(normalized) > 5) return true;
   if (plan.phase !== "topic" && countSentences(normalized) < 2) return true;
   if (plan.phase !== "topic" && !looksCompleteSentence(normalized)) return true;
   if (plan.phase !== "topic" && plan.speaker === "gemini" && normalized.length < 90) return true;
@@ -726,8 +819,10 @@ function isSafeFallback(message: string, plan: TurnPlan, input: NormalizedInput)
 
   if (!normalized) return false;
   if (containsForbiddenTone(normalized)) return false;
+  if (containsNonPoliteEnding(normalized)) return false;
 
   if (plan.phase !== "topic") {
+    if (!hasAnalysisSections(normalized)) return false;
     if (countSentences(normalized) < 2) return false;
     if (!looksCompleteSentence(normalized)) return false;
   }
@@ -736,7 +831,7 @@ function isSafeFallback(message: string, plan: TurnPlan, input: NormalizedInput)
 }
 
 function cleanTurnMessage(message: string) {
-  return message
+  return normalizeKoreanPoliteTone(message)
     .replace(/^["“”]+|["“”]+$/g, "")
     .replace(/^(사회자|(Claude|GPT|Gemini)\s*교수)\s*[:：]\s*/i, "")
     .trim();
@@ -744,6 +839,45 @@ function cleanTurnMessage(message: string) {
 
 function containsForbiddenTone(value: string) {
   return /(ㅋㅋ|ㅠㅠ|밈|예능|카페형|카페\s*수다|카페\s*토크|매콤|농담|드립|웃기|수다|comic|roleplay|inner thought)/i.test(value);
+}
+
+function containsNonPoliteEnding(value: string) {
+  const sentenceEndings = value
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean)
+    .filter((line) => /[.!?。！？]$/.test(line));
+
+  return sentenceEndings.some((line) =>
+    /(해야 한다|해야한다|되어야 한다|되어야한다|필요하다|판단한다|말한다|본다|크다|작다|높다|낮다|어렵다|가능하다|중요하다|충분하다|부족하다|있다|없다|아니다|된다|한다)[.!?。！？]$/.test(line),
+  );
+}
+
+function hasAnalysisSections(value: string) {
+  return /핵심\s*의견\s*[:：]/.test(value) && /장점\s*[:：]?/.test(value) && /단점\s*[:：]?/.test(value) && /인사이트\s*[:：]?/.test(value);
+}
+
+function normalizeKoreanPoliteTone(value: string) {
+  return value
+    .replace(/해야\s*한다([.!?。！？])/g, "해야 합니다$1")
+    .replace(/되어야\s*한다([.!?。！？])/g, "되어야 합니다$1")
+    .replace(/필요하다([.!?。！？])/g, "필요합니다$1")
+    .replace(/판단한다([.!?。！？])/g, "판단합니다$1")
+    .replace(/말한다([.!?。！？])/g, "말합니다$1")
+    .replace(/본다([.!?。！？])/g, "봅니다$1")
+    .replace(/가능하다([.!?。！？])/g, "가능합니다$1")
+    .replace(/중요하다([.!?。！？])/g, "중요합니다$1")
+    .replace(/충분하다([.!?。！？])/g, "충분합니다$1")
+    .replace(/부족하다([.!?。！？])/g, "부족합니다$1")
+    .replace(/어렵다([.!?。！？])/g, "어렵습니다$1")
+    .replace(/커진다([.!?。！？])/g, "커집니다$1")
+    .replace(/낮아진다([.!?。！？])/g, "낮아집니다$1")
+    .replace(/높아진다([.!?。！？])/g, "높아집니다$1")
+    .replace(/있다([.!?。！？])/g, "있습니다$1")
+    .replace(/없다([.!?。！？])/g, "없습니다$1")
+    .replace(/아니다([.!?。！？])/g, "아닙니다$1")
+    .replace(/된다([.!?。！？])/g, "됩니다$1")
+    .replace(/한다([.!?。！？])/g, "합니다$1");
 }
 
 function hasConnectionSignal(value: string) {
@@ -900,6 +1034,7 @@ ${history.map((item) => `- ${item}`).join("\n")}
   - 비추천: 근거가 약하고 위험이나 손실이 크며, 실패 시 되돌리기 어려울 때.
 - "애매함"만으로 조건부 추천을 선택하지 마세요. 애매하지만 작게 해볼 수 있으면 조건부 추천, 애매하고 지금 움직이면 위험하면 보류입니다.
 - 보고서 말투를 과하게 쓰지 말고, 실제 회의 결론처럼 간결하게 정리합니다.
+- 반드시 존댓말/합니다체로 씁니다. "한다", "된다", "필요하다", "판단한다" 같은 보고서식 반말 종결을 쓰지 않습니다.
 - summary는 첫 문장 1개를 핵심 결론으로 쓰고, 이어서 1~2문장만 보충합니다.
 - summary 첫 문장에는 recommendation 값을 자연스럽게 포함하되, "검증 가능한 범위부터 확인" 같은 일반론만 쓰지 말고 무엇을 왜 그렇게 판단하는지 드러냅니다.
 - summary와 nextActions는 정리된 주제와 핵심 질문에 직접 답해야 합니다. 어떤 안건에도 붙일 수 있는 문장은 실패입니다.
@@ -1043,7 +1178,7 @@ function normalizeGeneratedFinalReport(
   const report: FinalReport = {
     heading: "결론",
     recommendation,
-    summary: cleanText(parsed.summary, ""),
+    summary: normalizeKoreanPoliteTone(cleanText(parsed.summary, "")),
     mainClaims,
     agreements,
     disagreements,
@@ -1071,6 +1206,7 @@ function isFinalReportUsable(report: FinalReport, input: NormalizedInput) {
   if (!looksCompleteSentence(report.summary)) return false;
   if (isGenericConclusionSummary(report.summary, input)) return false;
   if (containsForbiddenTone(combined)) return false;
+  if (containsNonPoliteEnding(combined)) return false;
   if (!hasAgendaOverlap(combined, input)) return false;
   if ((report.mainClaims ?? report.keyReasons).length < 1) return false;
   if ((report.agreements ?? report.conditions).length < 1) return false;
