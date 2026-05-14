@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import styles from "./AdminLogin.module.css";
@@ -17,8 +17,22 @@ export function LoginForm() {
   const nextPath = searchParams.get("next") || "/";
   const isAdminLogin = nextPath === "/admin" || nextPath.startsWith("/admin?");
   const adminUserId = "demo03";
+  const sessionReason = searchParams.get("reason");
+  const searchParamsString = searchParams.toString();
+
+  useEffect(() => {
+    if (isAdminLogin || sessionReason !== "session-replaced") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParamsString);
+    params.delete("reason");
+    const query = params.toString();
+    router.replace(query ? `/login?${query}` : "/login", { scroll: false });
+  }, [isAdminLogin, router, searchParamsString, sessionReason]);
+
   const sessionNotice =
-    !error && searchParams.get("reason") === "session-replaced"
+    isAdminLogin && !error && sessionReason === "session-replaced"
       ? "다른 기기에서 같은 계정으로 새 로그인이 발생했거나 로그인 시간이 만료되었습니다. 다시 로그인하면 현재 기기로 접속이 전환됩니다."
       : "";
 
