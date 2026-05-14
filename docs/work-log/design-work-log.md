@@ -1886,3 +1886,34 @@ QA 확인 요청:
 ### 남은 이슈
 
 - 모바일 실제 화면에서 하단 내비게이션 바와 겹치지 않는지 최종 육안 확인이 필요합니다.
+
+## 2026-05-14 - PWA 앱 아이콘과 카카오톡 공유 이미지 반영
+
+### 날짜
+
+- 2026-05-14
+
+### 수정한 범위
+
+- PWA 앱 아이콘
+- Apple touch icon
+- 카카오톡/OG 공유 이미지
+- 웹앱 manifest 아이콘 목적값
+
+### 수정한 파일
+
+- `app/manifest.ts`
+- `public/images/ai-talk-icon-192.png`
+- `public/images/ai-talk-icon-512.png`
+- `public/images/apple-touch-icon.png`
+- `public/images/ai-talk-og.png`
+
+### 확인한 내용
+
+- `npm.cmd run build` 통과.
+- `npx.cmd tsc --noEmit` 통과.
+- 로그인, 토론 생성, 저장/조회, Supabase, AI API 로직은 수정하지 않았습니다.
+
+### 남은 이슈
+
+- Vercel 배포 후 실제 모바일 홈 화면 추가와 카카오톡 URL 공유 미리보기 갱신 여부를 최종 확인해야 합니다.
