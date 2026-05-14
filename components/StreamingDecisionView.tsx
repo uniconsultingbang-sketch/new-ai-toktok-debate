@@ -631,12 +631,6 @@ export function StreamingDecisionView({ decisionId }: { decisionId: string }) {
         ) : null}
 
         <nav className="prof-bottom-nav">
-          {decision.finalReport ? (
-            <button type="button" onClick={scrollToFinalReport} className="prof-result-button">
-              <FileText className="size-4" />
-              결과 바로 보기
-            </button>
-          ) : null}
           <button type="button" onClick={goHome}>
             <Home className="size-4" />
             홈으로 돌아가기
