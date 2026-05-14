@@ -725,62 +725,321 @@ function fallbackTurn(input: NormalizedInput, profile: TopicProfile, plan: TurnP
   }
 
   if (plan.phase === "discussion" && plan.speaker === "claude") {
+    const frame = fallbackFrameContext(input, profile, plan.roundTitle);
+
     return makeAnalysisTurn(
-      `${previousName}의 우려를 반영하더라도, ${plan.roundTitle} 쟁점은 작은 실험으로 가능성을 확인할 수 있습니다.`,
-      [
-        "제한된 범위에서 시작하면 조직의 학습 비용을 통제할 수 있습니다",
-        "검증 결과가 좋을 때만 확대하면 전략적 선택지를 유지할 수 있습니다",
-      ],
-      [
-        "실험 대상이 너무 넓으면 무엇이 성공 요인인지 알기 어렵습니다",
-        "현장 참여가 약하면 결과가 실제 운영 변화로 이어지지 않을 수 있습니다",
-      ],
-      "가능성을 살리려면 먼저 작고 측정 가능한 단위로 쪼개야 합니다.",
+      `${previousName}의 우려를 반영하더라도, ${plan.roundTitle} 쟁점은 ${frame.opportunity} 쪽으로 초점을 맞추면 가능성이 있습니다.`,
+      frame.claudePros,
+      frame.claudeCons,
+      frame.claudeInsight,
     );
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gpt") {
+    const frame = fallbackFrameContext(input, profile, plan.roundTitle);
+
     return makeAnalysisTurn(
-      "Claude의 제한된 실험 제안은 현실적이지만, 실패 기준이 없으면 작은 실행도 낭비가 될 수 있습니다.",
-      [
-        "비용 한도와 검증 기간을 정하면 손실을 통제할 수 있습니다",
-        "책임자를 정하면 실행 후 평가가 흐려지는 문제를 줄일 수 있습니다",
-      ],
-      [
-        "성과 기준이 없으면 시간을 쓰고도 결론을 내기 어렵습니다",
-        "중단 조건이 약하면 실패한 실험도 관성적으로 계속될 수 있습니다",
-      ],
-      "이 안건은 시작 여부보다 멈출 수 있는 구조를 먼저 설계해야 안전합니다.",
+      `Claude의 제안은 ${frame.opportunity} 측면의 가능성을 살릴 수 있지만, ${frame.mainRisk} 문제가 정리되지 않으면 ${plan.roundTitle}에서 부담이 먼저 커질 수 있습니다.`,
+      frame.gptPros,
+      frame.gptCons,
+      frame.gptInsight,
     );
   }
 
   if (plan.phase === "discussion" && plan.speaker === "gemini") {
+    const frame = fallbackFrameContext(input, profile, plan.roundTitle);
+
     return makeAnalysisTurn(
-      "GPT의 지적까지 반영하면 균형점은 가능성을 확인하되 비용과 책임을 통제하는 조건부 검증입니다.",
-      [
-        "작은 검증은 Claude가 말한 가능성을 살릴 수 있습니다",
-        `${focusText} 기준을 쓰면 토론 결과를 실행 판단으로 연결할 수 있습니다`,
-      ],
-      [
-        "성과와 중단 기준이 없으면 조건부 검증이라는 말이 형식에 그칠 수 있습니다",
-        "초기 범위가 넓으면 리스크 통제가 어려워집니다",
-      ],
-      "결론은 실행을 미루는 것이 아니라 검증 가능한 실행으로 좁히는 것입니다.",
+      `GPT의 지적까지 반영하면 ${plan.roundTitle}의 균형점은 ${frame.balance}입니다.`,
+      frame.geminiPros,
+      frame.geminiCons,
+      frame.geminiInsight,
     );
   }
 
+  const issueFrames = input.agenda.discussionFrames.length
+    ? input.agenda.discussionFrames
+    : [focusText];
+  const issueContexts = issueFrames.slice(0, 3).map((frame) => fallbackFrameContext(input, profile, frame));
+
   return makeAnalysisTurn(
-    `두 의견을 종합하면 이 안건의 핵심 쟁점은 ${focusText}입니다.`,
-    [
-      "실제 수요와 근거를 확인하면 진행 여부를 더 명확히 판단할 수 있습니다",
-      "기존 방식보다 나은 지점을 찾으면 실행 명분이 생깁니다",
-    ],
-    [
-      "비용과 운영 부담을 감당할 수 없으면 좋은 의도도 지속되기 어렵습니다",
-      "실패했을 때 멈출 기준이 없으면 의사결정 책임이 흐려집니다",
-    ],
-    "최종 판단은 작은 실행 계획과 중단 기준을 동시에 만들 수 있는지에 달려 있습니다.",
+    `두 의견을 종합하면 ${subject}의 핵심 쟁점은 ${issueContexts.map((item) => item.shortName).join(", ")}입니다.`,
+    issueContexts.map((item) => item.issuePros).slice(0, 2),
+    issueContexts.map((item) => item.issueCons).slice(0, 2),
+    `최종 판단은 ${focusText} 기준을 실제 의사결정 조건으로 바꿀 수 있는지에 달려 있습니다.`,
   );
+}
+
+function fallbackFrameContext(input: NormalizedInput, profile: TopicProfile, frameTitle: string) {
+  const subject = input.agenda.topic;
+  const frame = frameTitle || "핵심 판단 기준";
+  const source = frame;
+  const fullSource = `${frame} ${input.agenda.topic} ${input.agenda.coreQuestion}`;
+  const match = (pattern: RegExp) => pattern.test(source);
+
+  if (match(/재무|비용|투자|예산|수익|손익|ROI|매출|원가|자금|경제성/i)) {
+    return {
+      shortName: "재무 영향",
+      opportunity: "초기 비용 대비 기대 효과",
+      mainRisk: "투자 규모와 회수 기준",
+      balance: "전면 투자보다 예산 한도와 성과 게이트를 둔 단계적 투자",
+      claudePros: [
+        `${subject}이 비용을 쓰더라도 장기 경쟁력이나 생산성 개선으로 이어지는지 확인할 수 있습니다`,
+        "작은 예산으로 시작하면 투자 명분과 내부 설득 근거를 동시에 만들 수 있습니다",
+      ],
+      claudeCons: [
+        "초기 비용만 보고 중장기 학습 효과를 놓치면 과소투자될 수 있습니다",
+        "성과 지표가 모호하면 좋은 결과도 재무 판단으로 연결되기 어렵습니다",
+      ],
+      claudeInsight: "재무 관점에서는 큰 예산보다 먼저 측정 가능한 비용 단위와 기대 효과를 정해야 합니다.",
+      gptPros: [
+        "예산 한도와 평가 시점을 정하면 손실이 커지기 전에 조정할 수 있습니다",
+        "단계별 투자 기준이 있으면 실패한 방향을 빠르게 멈출 수 있습니다",
+      ],
+      gptCons: [
+        "회수 기준이 없으면 전략이라는 이름으로 비용이 계속 늘어날 수 있습니다",
+        "간접 효과만 강조하면 실제 손익 기여를 설명하기 어렵습니다",
+      ],
+      gptInsight: "재무 리스크를 줄이려면 투자 전 기대 효과, 비용 상한, 중단 기준이 먼저 필요합니다.",
+      geminiPros: [
+        "재무성과와 전략적 학습 효과를 나눠 보면 단기 비용 논쟁을 줄일 수 있습니다",
+        "작은 예산의 검증 단계는 추천과 보류 사이의 현실적 중간 지점이 될 수 있습니다",
+      ],
+      geminiCons: [
+        "숫자로 잡을 지표가 없으면 다음 투자 판단이 다시 감으로 돌아갈 수 있습니다",
+        "비용 책임자가 불분명하면 실행 후 평가가 약해질 수 있습니다",
+      ],
+      geminiInsight: "균형점은 비용을 막는 것이 아니라 투자 단계를 나누고 다음 의사결정 기준을 선명하게 두는 것입니다.",
+      issuePros: "재무 효과는 비용 상한과 성과 지표를 정하면 검증 가능한 쟁점이 됩니다",
+      issueCons: "회수 기준이 없으면 가능성이 있어도 비용 부담이 먼저 커질 수 있습니다",
+    };
+  }
+
+  if (match(/기존|현재|소분자|레거시|포트폴리오|R&D|연구|파이프라인|자원\s*배분/i)) {
+    return {
+      shortName: "기존 R&D 영향",
+      opportunity: "기존 R&D 자산과 새 방향의 연결성",
+      mainRisk: "기존 파이프라인과 인력의 자원 잠식",
+      balance: "기존 R&D를 버리는 전환이 아니라 선택 기준을 다시 세우는 포트폴리오 조정",
+      claudePros: [
+        `${subject}은 기존 R&D의 한계를 보완하고 새로운 성장 옵션을 만들 수 있습니다`,
+        "기존 과제와 연결되는 영역부터 시작하면 전환 부담을 낮출 수 있습니다",
+      ],
+      claudeCons: [
+        "기존 과제와 분리된 별도 조직처럼 움직이면 현장 적용이 약해질 수 있습니다",
+        "전환 메시지가 강하면 기존 연구 인력이 위축될 수 있습니다",
+      ],
+      claudeInsight: "기존 R&D 관점에서는 대체가 아니라 연결 가능한 파이프라인을 먼저 고르는 것이 중요합니다.",
+      gptPros: [
+        "기존 과제와 충돌하지 않는 범위를 정하면 내부 저항을 줄일 수 있습니다",
+        "포트폴리오 기준을 세우면 어떤 과제를 계속할지 더 명확해집니다",
+      ],
+      gptCons: [
+        "자원이 새 조직으로만 이동하면 기존 R&D 성과가 흔들릴 수 있습니다",
+        "기존 방식보다 나은 근거가 없으면 조직 내부에서 명분을 얻기 어렵습니다",
+      ],
+      gptInsight: "기존 R&D에 미치는 영향은 기회이자 리스크이므로, 자원 배분 원칙부터 공개적으로 정해야 합니다.",
+      geminiPros: [
+        "기존 R&D와 새 전환 영역을 경쟁 관계가 아니라 역할 분담으로 볼 수 있습니다",
+        "공통 데이터와 평가 기준을 쓰면 두 방향의 시너지를 확인할 수 있습니다",
+      ],
+      geminiCons: [
+        "우선순위가 흐리면 기존 과제도 새 과제도 모두 중간 성과에 그칠 수 있습니다",
+        "전환 대상 파이프라인을 고르지 않으면 논의가 선언에 머물 수 있습니다",
+      ],
+      geminiInsight: "균형점은 기존 R&D를 유지하되 새 방향이 붙을 과제와 빠질 과제를 명확히 나누는 것입니다.",
+      issuePros: "기존 R&D와 연결되는 과제를 고르면 전환의 내부 명분을 만들 수 있습니다",
+      issueCons: "자원 배분 기준이 없으면 기존 파이프라인과 새 조직이 충돌할 수 있습니다",
+    };
+  }
+
+  if (match(/데이터|AI|기술|플랫폼|모델|시스템|보안|인프라|자동화|품질|운영\s*부담/i)) {
+    return {
+      shortName: "기술·데이터 기반",
+      opportunity: "데이터와 기술의 의사결정 연결성",
+      mainRisk: "데이터 품질과 시스템 준비 부족",
+      balance: "기술 도입보다 데이터 품질과 사용 장면을 먼저 정하는 방식",
+      claudePros: [
+        `${subject}은 반복 업무와 의사결정 속도를 개선할 기회를 줄 수 있습니다`,
+        "활용 장면을 좁히면 데이터와 기술의 효과를 빠르게 확인할 수 있습니다",
+      ],
+      claudeCons: [
+        "데이터가 흩어져 있으면 모델 성능보다 정리 비용이 먼저 커질 수 있습니다",
+        "보안과 품질 기준이 약하면 현장 적용이 제한될 수 있습니다",
+      ],
+      claudeInsight: "기술 관점의 출발점은 좋은 도구보다 바로 쓸 수 있는 데이터와 업무 장면입니다.",
+      gptPros: [
+        "데이터 기준을 먼저 잡으면 기술 실패를 조기에 확인할 수 있습니다",
+        "보안과 접근 권한을 정하면 운영 리스크를 줄일 수 있습니다",
+      ],
+      gptCons: [
+        "데이터 품질이 낮으면 AI 도입 효과를 설명하기 어렵습니다",
+        "시스템 연동이 늦어지면 파일럿이 실제 운영으로 넘어가지 못할 수 있습니다",
+      ],
+      gptInsight: "기술 리스크를 낮추려면 모델보다 데이터 소유권, 품질, 보안 기준을 먼저 정해야 합니다.",
+      geminiPros: [
+        "기술 적용 범위를 좁히면 실패 비용을 낮추면서 학습할 수 있습니다",
+        "업무 흐름 안에 들어간 데이터 기준은 장기 자산이 될 수 있습니다",
+      ],
+      geminiCons: [
+        "기술 검증과 업무 검증을 분리하면 실제 효과를 놓칠 수 있습니다",
+        "운영 기준이 없으면 좋은 기술도 일회성 실험으로 끝날 수 있습니다",
+      ],
+      geminiInsight: "균형점은 기술 성능만 보지 않고 데이터 품질, 보안, 업무 적용성을 함께 보는 것입니다.",
+      issuePros: "데이터와 기술 기반이 갖춰지면 실행 속도와 판단 품질을 높일 수 있습니다",
+      issueCons: "데이터 품질과 보안 기준이 약하면 기술 도입 효과가 제한될 수 있습니다",
+    };
+  }
+
+  if (match(/시장|고객|수요|사용자|환자|판매|브랜드|경쟁|사업|매출/i)) {
+    return {
+      shortName: "시장·고객 수요",
+      opportunity: "실제 수요와 차별성",
+      mainRisk: "수요 강도와 구매 전환의 불확실성",
+      balance: "시장 전체 전망보다 특정 고객군과 사용 장면을 먼저 검증하는 방식",
+      claudePros: [
+        `${subject}은 명확한 고객 문제를 잡으면 시장에서 새 선택지가 될 수 있습니다`,
+        "초기 고객군을 좁히면 차별성과 반응을 빠르게 확인할 수 있습니다",
+      ],
+      claudeCons: [
+        "시장 전망만으로는 실제 구매나 사용 행동을 설명하기 어렵습니다",
+        "고객군이 넓으면 메시지와 제품 기준이 흐려질 수 있습니다",
+      ],
+      claudeInsight: "시장 관점에서는 전체 규모보다 누가 왜 바꿀지부터 확인해야 합니다.",
+      gptPros: [
+        "고객 반응을 먼저 보면 불필요한 확대를 막을 수 있습니다",
+        "경쟁 대안과 비교하면 실제 전환 이유를 더 분명히 볼 수 있습니다",
+      ],
+      gptCons: [
+        "수요가 약하면 좋은 콘셉트도 반복 구매나 사용으로 이어지기 어렵습니다",
+        "차별성이 약하면 가격이나 마케팅 비용 경쟁으로 밀릴 수 있습니다",
+      ],
+      gptInsight: "시장 리스크는 필요해 보인다는 말과 실제 선택 행동 사이의 차이에서 생깁니다.",
+      geminiPros: [
+        "고객군과 사용 상황을 좁히면 가능성과 리스크를 동시에 볼 수 있습니다",
+        "경쟁 대안 대비 장점을 검증하면 실행 우선순위를 정하기 쉽습니다",
+      ],
+      geminiCons: [
+        "시장 정의가 넓으면 토론 결론이 막연한 전망으로 흐를 수 있습니다",
+        "고객 검증 없이 제품이나 조직부터 만들면 실패 비용이 커질 수 있습니다",
+      ],
+      geminiInsight: "균형점은 시장을 크게 보는 것이 아니라 첫 고객과 첫 사용 장면을 구체화하는 것입니다.",
+      issuePros: "고객군과 사용 장면을 좁히면 실제 수요를 검증할 수 있습니다",
+      issueCons: "수요 강도가 약하면 실행 명분이 있어도 성과로 이어지기 어렵습니다",
+    };
+  }
+
+  if (match(/조직|역량|인력|교육|문화|거버넌스|프로세스|현장|채용|권한|협업|조직\s*운영/i)) {
+    return {
+      shortName: "조직 역량",
+      opportunity: "조직 학습과 실행 체계",
+      mainRisk: "인력 역량과 권한 구조의 미비",
+      balance: "전담 조직 선언보다 현장 참여, 권한, 교육, 평가 기준을 함께 세우는 방식",
+      claudePros: [
+        `${subject}은 조직 내부에 새 역량을 쌓는 계기가 될 수 있습니다`,
+        "작은 성공 사례를 만들면 현장 연구자와 사업 부서의 참여를 끌어낼 수 있습니다",
+      ],
+      claudeCons: [
+        "전담 조직만 만들고 현장 권한이 없으면 실제 변화가 느릴 수 있습니다",
+        "교육 없이 도구만 도입하면 사용성이 낮아질 수 있습니다",
+      ],
+      claudeInsight: "조직 역량은 사람을 새로 뽑는 문제를 넘어 현장이 반복해서 쓰는 구조를 만드는 문제입니다.",
+      gptPros: [
+        "역할과 책임을 명확히 하면 실행 속도와 평가 책임을 높일 수 있습니다",
+        "교육과 파일럿을 묶으면 역량 부족을 단계적으로 줄일 수 있습니다",
+      ],
+      gptCons: [
+        "권한 없는 조직은 조정 회의만 늘리고 실제 의사결정을 바꾸기 어렵습니다",
+        "핵심 인력이 부족하면 외부 협력도 내부 자산으로 남기 어렵습니다",
+      ],
+      gptInsight: "조직 리스크의 핵심은 조직도보다 권한, 인력, 반복 운영 방식이 준비되어 있는지입니다.",
+      geminiPros: [
+        "전담 조직과 현장 조직의 역할을 나누면 실행 부담을 줄일 수 있습니다",
+        "교육, 프로젝트, 평가를 함께 설계하면 역량 강화가 실제 성과로 이어질 수 있습니다",
+      ],
+      geminiCons: [
+        "성과 평가가 없으면 조직 학습이 개인 역량에만 의존할 수 있습니다",
+        "현장 부서가 참여하지 않으면 새 조직이 고립될 수 있습니다",
+      ],
+      geminiInsight: "균형점은 별도 조직을 만드는 것과 동시에 현장 부서가 함께 책임지는 운영 구조를 두는 것입니다.",
+      issuePros: "조직 역량은 권한과 교육 체계를 붙이면 실행 가능한 쟁점이 됩니다",
+      issueCons: "전담 조직만 만들면 실제 현장 변화 없이 비용 조직으로 보일 수 있습니다",
+    };
+  }
+
+  if (match(/규제|임상|안전|허가|식약처|FDA|보험|수가|법률|책임|윤리/i) || (profile.type === "pharma" && /규제|임상|안전|허가|근거|환자/.test(fullSource))) {
+    return {
+      shortName: "규제·안전성",
+      opportunity: "공식 근거와 절차 기반의 신뢰성",
+      mainRisk: "규제와 안전성 검증 부족",
+      balance: "사업성 판단보다 안전성, 허가, 책임 기준을 먼저 확인하는 방식",
+      claudePros: [
+        `${subject}은 규제 기준을 초기에 반영하면 신뢰 가능한 실행 방향을 만들 수 있습니다`,
+        "작은 검증 단계에서도 공식 근거를 쌓으면 이후 의사결정이 쉬워질 수 있습니다",
+      ],
+      claudeCons: [
+        "규제 절차를 늦게 확인하면 개발 방향을 다시 바꿔야 할 수 있습니다",
+        "안전성 기준이 약하면 시장성 논의가 의미를 잃을 수 있습니다",
+      ],
+      claudeInsight: "규제 관점에서는 빠른 실행보다 초기에 확인할 공식 기준을 정하는 것이 핵심입니다.",
+      gptPros: [
+        "규제 조건을 먼저 확인하면 되돌리기 어려운 비용을 줄일 수 있습니다",
+        "안전성과 책임 범위를 정하면 내부 승인 기준이 명확해집니다",
+      ],
+      gptCons: [
+        "근거가 부족하면 출시나 확대 판단이 보류될 가능성이 큽니다",
+        "책임 주체가 불명확하면 작은 실험도 조직 리스크가 될 수 있습니다",
+      ],
+      gptInsight: "이 쟁점은 가능성보다 공식 근거, 안전성, 책임 구조가 먼저입니다.",
+      geminiPros: [
+        "규제 기준과 사업 기준을 분리하면 무엇을 먼저 검증할지 명확해집니다",
+        "초기부터 근거 자료를 쌓으면 보류와 진행의 기준을 객관화할 수 있습니다",
+      ],
+      geminiCons: [
+        "시장성만 보고 움직이면 규제 단계에서 다시 멈출 수 있습니다",
+        "근거 수준이 낮으면 토론 결론이 실제 승인으로 이어지기 어렵습니다",
+      ],
+      geminiInsight: "균형점은 가능성을 닫지 않되 공식 근거와 안전성 검증을 첫 관문으로 두는 것입니다.",
+      issuePros: "공식 근거와 규제 기준을 먼저 잡으면 신뢰도 있는 판단이 가능합니다",
+      issueCons: "안전성이나 책임 기준이 부족하면 사업성 논의보다 보류 판단이 앞설 수 있습니다",
+    };
+  }
+
+  return {
+    shortName: frame,
+    opportunity: "작은 검증을 통한 판단 근거",
+    mainRisk: "성공 기준과 중단 기준의 부재",
+    balance: "가능성은 살리되 범위, 책임, 평가 기준을 먼저 정하는 조건부 검증",
+    claudePros: [
+      `${subject}은 제한된 범위에서 시작하면 가능성을 확인할 수 있습니다`,
+      "검증 결과가 좋을 때만 확대하면 전략적 선택지를 유지할 수 있습니다",
+    ],
+    claudeCons: [
+      "실험 대상이 너무 넓으면 무엇이 성공 요인인지 알기 어렵습니다",
+      "현장 참여가 약하면 결과가 실제 운영 변화로 이어지지 않을 수 있습니다",
+    ],
+    claudeInsight: `${frame}에서는 먼저 작고 측정 가능한 단위로 쪼개는 것이 중요합니다.`,
+    gptPros: [
+      "비용 한도와 검증 기간을 정하면 손실을 통제할 수 있습니다",
+      "책임자를 정하면 실행 후 평가가 흐려지는 문제를 줄일 수 있습니다",
+    ],
+    gptCons: [
+      "성과 기준이 없으면 시간을 쓰고도 결론을 내기 어렵습니다",
+      "중단 조건이 약하면 실패한 실험도 관성적으로 계속될 수 있습니다",
+    ],
+    gptInsight: `${frame}에서는 시작 여부보다 멈출 수 있는 구조를 먼저 설계해야 안전합니다.`,
+    geminiPros: [
+      "작은 검증은 가능성을 살리면서 리스크를 낮출 수 있습니다",
+      `${input.agenda.focusAreas.join(", ") || profile.decisionFrame} 기준을 쓰면 토론 결과를 실행 판단으로 연결할 수 있습니다`,
+    ],
+    geminiCons: [
+      "성과와 중단 기준이 없으면 조건부 검증이라는 말이 형식에 그칠 수 있습니다",
+      "초기 범위가 넓으면 리스크 통제가 어려워집니다",
+    ],
+    geminiInsight: `${frame}의 균형점은 실행을 미루는 것이 아니라 검증 가능한 실행으로 좁히는 것입니다.`,
+    issuePros: `${frame}은 검증 범위와 평가 기준을 정하면 실행 판단으로 연결될 수 있습니다`,
+    issueCons: `${frame}의 중단 기준이 없으면 좋은 의도도 관성적 실행으로 흐를 수 있습니다`,
+  };
 }
 
 function makeAnalysisTurn(headline: string, pros: string[], cons: string[], insight: string) {
@@ -802,7 +1061,6 @@ function shouldUseFallback(message: string, plan: TurnPlan, history: string[], i
   if (containsForbiddenTone(normalized)) return true;
   if (plan.phase !== "topic" && containsNonPoliteEnding(normalized)) return true;
   if (plan.phase !== "topic" && normalized.length > 850) return true;
-  if (plan.phase !== "topic" && !hasAnalysisSections(normalized)) return true;
   if (plan.phase === "topic" && countSentences(normalized) > 5) return true;
   if (plan.phase !== "topic" && countSentences(normalized) < 2) return true;
   if (plan.phase !== "topic" && !looksCompleteSentence(normalized)) return true;
